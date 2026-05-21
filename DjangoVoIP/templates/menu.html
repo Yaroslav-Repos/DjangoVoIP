@@ -1,0 +1,164 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="create-room-zone" style="margin-bottom: 30px; padding: 15px; border: 1px solid #ccc; border-radius: 5px;">
+    <h3>Створити нову кімнату</h3>
+    <form id="create-room-form">
+        <input type="text" id="new-room-name" placeholder="Назва кімнати" required style="padding: 5px; margin-right: 10px;">
+
+        <label style="margin-right: 10px;">
+            <input type="checkbox" id="is-private-checkbox"> Приватна
+        </label>
+
+        <input type="password" id="room-password-input" placeholder="Пароль для кімнати" style="display: none; padding: 5px; margin-right: 10px;">
+
+        <button type="submit" style="padding: 5px 15px;">Створити та увійти</button>
+    </form>
+</div>
+
+<h2>Доступні кімнати (Меню)</h2>
+<div>
+    {% for room in page_obj %}
+    <div class="room-item">
+        <span><strong>{{ room.name }}</strong> {% if room.is_private %}(Приватна){% endif %}</span>
+        {% if room.is_private %}
+            <button onclick="openPasswordModal('{{ room.id }}', '{{ room.name }}')">Увійти</button>
+        {% else %}
+            <a href="{% url 'room_detail' room.id %}">Увійти</a>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+
+<div style="margin-top:20px;">
+    {% if page_obj.has_previous %}
+    <a href="?page={{ page_obj.previous_page_number }}">Назад</a>
+    {% endif %}
+    <span>Сторінка {{ page_obj.number }} з {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}
+    <a href="?page={{ page_obj.next_page_number }}">Вперед</a>
+    {% endif %}
+</div>
+
+
+
+<!-- Modal for private room password -->
+<div id="password-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000;">
+    <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:white; padding:30px; border-radius:8px; box-shadow:0 4px 6px rgba(0,0,0,0.1);">
+        <h3>Введіть пароль для кімнати: <span id="modal-room-name"></span></h3>
+        <input type="password" id="modal-password-input" placeholder="Пароль" style="padding:10px; width:100%; margin-bottom:10px;">
+        <div style="display:flex; gap:10px;">
+            <button onclick="joinPrivateRoom()" style="flex:1; padding:10px;">Увійти</button>
+            <button onclick="closePasswordModal()" style="flex:1; padding:10px;">Скасувати</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentRoomId = null;
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    function openPasswordModal(roomId, roomName) {
+        currentRoomId = roomId;
+        document.getElementById('modal-room-name').textContent = roomName;
+        document.getElementById('password-modal').style.display = 'block';
+        document.getElementById('modal-password-input').focus();
+    }
+
+    function closePasswordModal() {
+        document.getElementById('password-modal').style.display = 'none';
+        document.getElementById('modal-password-input').value = '';
+        currentRoomId = null;
+    }
+
+    async function joinPrivateRoom() {
+        const password = document.getElementById('modal-password-input').value;
+        if (!password) {
+            alert('Будь ласка, введіть пароль');
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/rooms/${currentRoomId}/join/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({ password: password })
+            });
+
+            if (response.ok) {
+                window.location.href = `/room/${currentRoomId}/`;
+            } else {
+                alert('Невірний пароль');
+                document.getElementById('modal-password-input').value = '';
+            }
+        } catch (error) {
+            console.error('Помилка:', error);
+            alert('Помилка при вході в кімнату');
+        }
+    }
+
+    // Close modal on Enter key
+    document.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter' && document.getElementById('password-modal').style.display !== 'none') {
+            joinPrivateRoom();
+        }
+    });
+
+    document.getElementById('is-private-checkbox').onchange = function() {
+        const passwordInput = document.getElementById('room-password-input');
+        passwordInput.style.display = this.checked ? 'inline-block' : 'none';
+        if (!this.checked) passwordInput.value = '';
+    };
+
+    document.getElementById('create-room-form').onsubmit = async function(e) {
+        e.preventDefault();
+
+        const name = document.getElementById('new-room-name').value.trim();
+        const is_private = document.getElementById('is-private-checkbox').checked;
+        const password = document.getElementById('room-password-input').value;
+
+        try {
+            const response = await fetch('/api/rooms/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({
+                    name: name,
+                    is_private: is_private,
+                    password: password
+                })
+            });
+
+            if (response.ok) {
+                const createdRoom = await response.json();
+                window.location.href = `/room/${createdRoom.id}/`;
+            } else {
+                const errorData = await response.json();
+                alert('Помилка створення: ' + JSON.stringify(errorData));
+            }
+        } catch (error) {
+            console.error('Помилка під час запиту:', error);
+        }
+    };
+
+
+{% endblock %}

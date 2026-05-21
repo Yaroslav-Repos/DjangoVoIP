@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Кімната: {{ room.name }}</h2>
+<a href="{% url 'menu' %}"><- Вийти в меню</a>
+
+<div class="ts-container">
+    <div class="sidebar">
+        <h3>Учасники</h3>
+        <ul id="user-list"></ul>
+        <button id="mute-btn" style="width:100%; padding:10px;">Вимкнути мікрофон</button>
+    </div>
+    <div class="chat-section">
+        <h3>Текстовий Чат</h3>
+        <div id="chat-box" style="height: 250px; overflow-y: scroll;"></div>
+        <input type="text" id="chat-input" style="width:100%; padding:10px;" placeholder="Напишіть щось і натисніть Enter...">
+    </div>
+</div>
+
+<div id="remote-audios" style="display:none;"></div>
+
+<script>
+    const roomId = "{{ room.id }}";
+    const currentUserId = {{ request.user.id }};
+    const currentUsername = "{{ request.user.username }}";
+</script>
+<script src="/static/js/room.js"></script>
+{% endblock %}

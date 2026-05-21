@@ -203,6 +203,14 @@ cython_debug/
 # Temporary file for partial code execution
 tempCodeRunnerFile.py
 
+# Visual Studio (Local settings and cache)
+.vs/
+.vscode/
+*.sln
+*.pyproj
+*.user
+*.slnx
+
 # Ruff stuff:
 .ruff_cache/
 
@@ -216,7 +224,4 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
-/.vs/DjangoVoIP.slnx
-*.pyproj
-*.user
-*.slnx
+

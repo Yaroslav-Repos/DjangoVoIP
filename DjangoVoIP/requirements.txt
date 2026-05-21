@@ -1,1 +1,11 @@
-django>=3.2.14
+Django>=3.2.14,<5.0
+djangorestframework>=3.14.0
+channels>=4.0.0
+daphne>=4.0.0
+python-dotenv>=0.21.0
+whitenoise>=6.4.0
+Pillow>=9.5.0
+
+# Optional: For production with Redis
+# channels-redis>=4.1.0
+# redis>=4.5.0
