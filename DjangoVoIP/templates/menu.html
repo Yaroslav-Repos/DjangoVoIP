@@ -1,63 +1,381 @@
 {% extends 'base.html' %}
 {% block content %}
 
-<div class="create-room-zone" style="margin-bottom: 30px; padding: 15px; border: 1px solid #ccc; border-radius: 5px;">
-    <h3>Створити нову кімнату</h3>
-    <form id="create-room-form">
-        <input type="text" id="new-room-name" placeholder="Назва кімнати" required style="padding: 5px; margin-right: 10px;">
+<style>
+    .menu-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+    }
 
-        <label style="margin-right: 10px;">
-            <input type="checkbox" id="is-private-checkbox"> Приватна
-        </label>
+    .section {
+        background: #2f3136;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
 
-        <input type="password" id="room-password-input" placeholder="Пароль для кімнати" style="display: none; padding: 5px; margin-right: 10px;">
+    .section h3 {
+        margin: 0 0 15px 0;
+        color: #f2f2f2;
+        font-size: 16px;
+        font-weight: 600;
+    }
 
-        <button type="submit" style="padding: 5px 15px;">Створити та увійти</button>
-    </form>
-</div>
+    .section h2 {
+        margin: 20px 0 15px 0;
+        color: #f2f2f2;
+        font-size: 18px;
+        font-weight: 600;
+    }
 
-<h2>Доступні кімнати (Меню)</h2>
-<div>
-    {% for room in page_obj %}
-    <div class="room-item">
-        <span><strong>{{ room.name }}</strong> {% if room.is_private %}(Приватна){% endif %}</span>
-        {% if room.is_private %}
-            <button onclick="openPasswordModal('{{ room.id }}', '{{ room.name }}')">Увійти</button>
-        {% else %}
-            <a href="{% url 'room_detail' room.id %}">Увійти</a>
-        {% endif %}
+    .form-group {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    .form-input {
+        flex: 1;
+        min-width: 150px;
+        padding: 12px 15px;
+        background: #40444b;
+        color: #dbdbdb;
+        border: 1px solid #36393f;
+        border-radius: 6px;
+        font-size: 13px;
+        font-family: inherit;
+    }
+
+    .form-input:focus {
+        outline: none;
+        border-color: #5865f2;
+        box-shadow: 0 0 0 2px rgba(88, 101, 242, 0.2);
+    }
+
+    .form-input::placeholder {
+        color: #72767d;
+    }
+
+    .form-checkbox {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #dbdbdb;
+        font-size: 13px;
+        cursor: pointer;
+        user-select: none;
+    }
+
+    .form-checkbox input {
+        cursor: pointer;
+    }
+
+    .btn-primary,
+    .btn-secondary,
+    .btn-success,
+    .btn-danger {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 500;
+        font-size: 13px;
+        transition: all 0.2s;
+        white-space: nowrap;
+    }
+
+    .btn-primary {
+        background: #5865f2;
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background: #4752c4;
+    }
+
+    .btn-primary:active {
+        background: #3c45a5;
+    }
+
+    .btn-success {
+        background: #43b581;
+        color: white;
+    }
+
+    .btn-success:hover {
+        background: #3a9f6a;
+    }
+
+    .btn-danger {
+        background: #f04747;
+        color: white;
+    }
+
+    .btn-danger:hover {
+        background: #d63c3c;
+    }
+
+    .btn-secondary {
+        background: #40444b;
+        color: #dbdbdb;
+    }
+
+    .btn-secondary:hover {
+        background: #4a4d52;
+    }
+
+    .join-section {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .join-subsection {
+        display: flex;
+        gap: 10px;
+        align-items: flex-end;
+        flex-wrap: wrap;
+    }
+
+    .join-subsection label {
+        color: #72767d;
+        font-size: 12px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        width: 100%;
+        margin-bottom: -5px;
+    }
+
+    .room-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 12px;
+    }
+
+    .room-card {
+        background: #36393f;
+        border-radius: 8px;
+        padding: 15px;
+        transition: background 0.2s;
+        border-left: 4px solid #5865f2;
+    }
+
+    .room-card.private {
+        border-left-color: #43b581;
+    }
+
+    .room-card:hover {
+        background: #40444b;
+    }
+
+    .room-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 12px;
+    }
+
+    .room-card-name {
+        color: #f2f2f2;
+        font-weight: 600;
+        font-size: 14px;
+        flex: 1;
+        word-break: break-word;
+    }
+
+    .room-badge {
+        background: #5865f2;
+        color: white;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        white-space: nowrap;
+        margin-left: 8px;
+    }
+
+    .room-badge.private {
+        background: #43b581;
+    }
+
+    .room-card a {
+        display: inline-block;
+        color: white;
+        text-decoration: none;
+        padding: 8px 12px;
+        border-radius: 4px;
+        background: #5865f2;
+        font-size: 12px;
+        font-weight: 500;
+        transition: background 0.2s;
+    }
+
+    .room-card a:hover {
+        background: #4752c4;
+    }
+
+    .empty-state {
+        text-align: center;
+        color: #72767d;
+        padding: 30px 20px;
+        font-size: 13px;
+    }
+
+    .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.7);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal.active {
+        display: flex;
+    }
+
+    .modal-content {
+        background: #36393f;
+        border-radius: 12px;
+        width: 90%;
+        max-width: 400px;
+        padding: 20px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    }
+
+    .modal-content h3 {
+        margin: 0 0 15px 0;
+        color: #f2f2f2;
+        font-size: 16px;
+    }
+
+    .modal-content input {
+        width: 100%;
+        padding: 10px 12px;
+        margin-bottom: 15px;
+        background: #40444b;
+        color: #dbdbdb;
+        border: 1px solid #36393f;
+        border-radius: 6px;
+        font-size: 13px;
+        font-family: inherit;
+        box-sizing: border-box;
+    }
+
+    .modal-content input:focus {
+        outline: none;
+        border-color: #5865f2;
+        box-shadow: 0 0 0 2px rgba(88, 101, 242, 0.2);
+    }
+
+    .modal-buttons {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+    }
+
+    .modal-buttons button {
+        flex: 1;
+    }
+
+    .empty-state-icon {
+        font-size: 32px;
+        margin-bottom: 10px;
+        opacity: 0.5;
+    }
+</style>
+
+<div class="menu-container">
+    <!-- Create Room Section -->
+    <div class="section">
+        <h3>➕ Створити нову кімнату</h3>
+        <form id="create-room-form">
+            <div class="form-group">
+                <input type="text" id="new-room-name" class="form-input" placeholder="Назва кімнати" required>
+                <label class="form-checkbox">
+                    <input type="checkbox" id="is-private-checkbox">
+                    Приватна
+                </label>
+            </div>
+            <div class="form-group" id="password-group" style="display: none;">
+                <input type="password" id="room-password-input" class="form-input" placeholder="Пароль для кімнати">
+            </div>
+            <button type="submit" class="btn-primary" style="margin-top: 10px;">Створити та увійти</button>
+        </form>
     </div>
-    {% endfor %}
+
+    <!-- Join Room Section -->
+    <div class="section">
+        <h3>🔓 Приєднатися до приватної кімнати</h3>
+        <div class="join-section">
+            <div class="join-subsection">
+                <label>За UUID та паролем:</label>
+                <input type="text" id="room-id-input" class="form-input" placeholder="UUID кімнати">
+                <input type="password" id="join-password-input" class="form-input" placeholder="Пароль">
+                <button onclick="joinPrivateRoomByUUID()" class="btn-primary">Увійти</button>
+            </div>
+
+            <div class="join-subsection">
+                <label>За посиланням приєднання:</label>
+                <input type="text" id="invite-link-input" class="form-input" placeholder="Посилання (token UUID)">
+                <button onclick="joinWithInviteLink()" class="btn-success">Приєднатися</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Public Rooms Section -->
+    <div class="section">
+        <h2>🌐 Публічні кімнати</h2>
+        <div id="public-rooms" class="room-list"></div>
+    </div>
+
+    <!-- Private Rooms Section -->
+    <div class="section">
+        <h2>🔒 Мої приватні кімнати</h2>
+        <div id="private-rooms" class="room-list"></div>
+    </div>
 </div>
 
-<div style="margin-top:20px;">
-    {% if page_obj.has_previous %}
-    <a href="?page={{ page_obj.previous_page_number }}">Назад</a>
-    {% endif %}
-    <span>Сторінка {{ page_obj.number }} з {{ page_obj.paginator.num_pages }}</span>
-    {% if page_obj.has_next %}
-    <a href="?page={{ page_obj.next_page_number }}">Вперед</a>
-    {% endif %}
-</div>
-
-
-
-<!-- Modal for private room password -->
-<div id="password-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000;">
-    <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:white; padding:30px; border-radius:8px; box-shadow:0 4px 6px rgba(0,0,0,0.1);">
-        <h3>Введіть пароль для кімнати: <span id="modal-room-name"></span></h3>
-        <input type="password" id="modal-password-input" placeholder="Пароль" style="padding:10px; width:100%; margin-bottom:10px;">
-        <div style="display:flex; gap:10px;">
-            <button onclick="joinPrivateRoom()" style="flex:1; padding:10px;">Увійти</button>
-            <button onclick="closePasswordModal()" style="flex:1; padding:10px;">Скасувати</button>
+<!-- Password Modal -->
+<div id="password-modal" class="modal">
+    <div class="modal-content">
+        <h3>🔑 Введіть пароль</h3>
+        <p id="modal-room-name" style="color: #72767d; font-size: 12px; margin: 0 0 15px 0;"></p>
+        <input type="password" id="modal-password-input" placeholder="Пароль">
+        <div class="modal-buttons">
+            <button class="btn-secondary" onclick="closePasswordModal()">Скасувати</button>
+            <button class="btn-primary" onclick="joinPrivateRoom()">Увійти</button>
         </div>
     </div>
 </div>
 
 <script>
+document.addEventListener('DOMContentLoaded', async function() {
+    console.log('=== MENU SCRIPT LOADED ===');
+
     let currentRoomId = null;
 
-    function getCookie(name) {
+    // Toggle password field based on private checkbox
+    document.getElementById('is-private-checkbox').addEventListener('change', function() {
+        const passwordGroup = document.getElementById('password-group');
+        if (this.checked) {
+            passwordGroup.style.display = 'flex';
+            document.getElementById('room-password-input').required = true;
+        } else {
+            passwordGroup.style.display = 'none';
+            document.getElementById('room-password-input').required = false;
+        }
+    });
+
+    window.getCookie = function(name) {
         let cookieValue = null;
         if (document.cookie && document.cookie !== '') {
             const cookies = document.cookie.split(';');
@@ -70,23 +388,201 @@
             }
         }
         return cookieValue;
+    };
+
+    // Get URL parameters
+    function getUrlParam(name) {
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get(name);
     }
 
-    function openPasswordModal(roomId, roomName) {
+    // Load rooms from API
+    async function loadRooms() {
+        try {
+            const response = await fetch('/api/rooms/');
+            const data = await response.json();
+            const rooms = data.results || data;
+
+            const publicRoomsDiv = document.getElementById('public-rooms');
+            const privateRoomsDiv = document.getElementById('private-rooms');
+
+            publicRoomsDiv.innerHTML = '';
+            privateRoomsDiv.innerHTML = '';
+
+            rooms.forEach(room => {
+                const roomCard = document.createElement('div');
+                roomCard.className = 'room-card' + (room.is_private ? ' private' : '');
+
+                if (room.is_private) {
+                    roomCard.innerHTML = `
+                        <div class="room-card-header">
+                            <span class="room-card-name">🔒 ${room.name}</span>
+                            <span class="room-badge private">Приватна</span>
+                        </div>
+                        <a href="/room/${room.id}/">Увійти →</a>
+                    `;
+                    privateRoomsDiv.appendChild(roomCard);
+                } else {
+                    roomCard.innerHTML = `
+                        <div class="room-card-header">
+                            <span class="room-card-name">🌐 ${room.name}</span>
+                            <span class="room-badge">Публічна</span>
+                        </div>
+                        <a href="/room/${room.id}/">Увійти →</a>
+                    `;
+                    publicRoomsDiv.appendChild(roomCard);
+                }
+            });
+
+            if (publicRoomsDiv.children.length === 0) {
+                publicRoomsDiv.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🔕</div><p>Немає публічних кімнат</p></div>';
+            }
+            if (privateRoomsDiv.children.length === 0) {
+                privateRoomsDiv.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🚫</div><p>Ви не є членом жодної приватної кімнати</p></div>';
+            }
+        } catch (error) {
+            console.error('Помилка завантаження кімнат:', error);
+        }
+    }
+
+    // Check if URL has invite link parameters
+    async function handleInviteLinkFromUrl() {
+        const token = getUrlParam('invite');
+        const roomId = getUrlParam('room');
+
+        if (token && roomId) {
+            console.log('Found invite link in URL:', { token, roomId });
+            try {
+                if (!token.trim() || !roomId.trim()) {
+                    console.warn('Invalid token or roomId');
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                    return;
+                }
+
+                const response = await fetch(`/api/rooms/${roomId}/join-with-link/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': window.getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({ token: token })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('Joined room:', data);
+                    window.location.href = `/room/${roomId}/`;
+                } else {
+                    const data = await response.json();
+                    console.error('Join failed:', data);
+                    alert('Не вдалось приєднатися: ' + (data.detail || 'Невірне посилання'));
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                }
+            } catch (error) {
+                console.error('Помилка при приєднанні за посиланням:', error);
+                alert('Помилка при приєднанні');
+            }
+        }
+    }
+
+    await loadRooms();
+    await handleInviteLinkFromUrl();
+
+    window.joinPrivateRoomByUUID = async function() {
+        const roomId = document.getElementById('room-id-input').value.trim();
+        const password = document.getElementById('join-password-input').value.trim();
+
+        if (!roomId) {
+            alert('Введіть UUID кімнати');
+            return;
+        }
+
+        if (!password) {
+            alert('Введіть пароль');
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/rooms/${roomId}/join/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': window.getCookie('csrftoken')
+                },
+                body: JSON.stringify({ password: password })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                console.log('Join response:', data);
+                window.location.href = `/room/${roomId}/`;
+            } else {
+                const data = await response.json();
+                console.error('Join error:', data);
+                alert(data.detail || 'Невірний пароль або помилка доступу');
+                document.getElementById('join-password-input').value = '';
+            }
+        } catch (error) {
+            console.error('Помилка:', error);
+            alert('Помилка при вході в кімнату');
+        }
+    };
+
+    window.joinWithInviteLink = async function() {
+        const token = document.getElementById('invite-link-input').value.trim();
+        const roomId = document.getElementById('room-id-input').value.trim();
+
+        if (!token) {
+            alert('Введіть посилання приєднання (token)');
+            return;
+        }
+
+        if (!roomId) {
+            alert('Введіть UUID кімнати');
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/rooms/${roomId}/join-with-link/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': window.getCookie('csrftoken')
+                },
+                body: JSON.stringify({ token: token })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                console.log('Join via link response:', data);
+                window.location.href = `/room/${roomId}/`;
+            } else {
+                const data = await response.json();
+                console.error('Join via link error:', data);
+                alert(data.detail || 'Невірне посилання');
+                document.getElementById('invite-link-input').value = '';
+            }
+        } catch (error) {
+            console.error('Помилка:', error);
+            alert('Помилка при приєднанні');
+        }
+    };
+
+    window.openPasswordModal = function(roomId, roomName) {
         currentRoomId = roomId;
-        document.getElementById('modal-room-name').textContent = roomName;
-        document.getElementById('password-modal').style.display = 'block';
+        document.getElementById('modal-room-name').textContent = 'Кімната: ' + roomName;
+        document.getElementById('password-modal').classList.add('active');
         document.getElementById('modal-password-input').focus();
-    }
+    };
 
-    function closePasswordModal() {
-        document.getElementById('password-modal').style.display = 'none';
+    window.closePasswordModal = function() {
+        document.getElementById('password-modal').classList.remove('active');
         document.getElementById('modal-password-input').value = '';
         currentRoomId = null;
-    }
+    };
 
-    async function joinPrivateRoom() {
-        const password = document.getElementById('modal-password-input').value;
+    window.joinPrivateRoom = async function() {
+        const password = document.getElementById('modal-password-input').value.trim();
         if (!password) {
             alert('Будь ласка, введіть пароль');
             return;
@@ -97,68 +593,91 @@
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': getCookie('csrftoken')
+                    'X-CSRFToken': window.getCookie('csrftoken')
                 },
                 body: JSON.stringify({ password: password })
             });
 
             if (response.ok) {
+                const data = await response.json();
+                console.log('Modal join response:', data);
                 window.location.href = `/room/${currentRoomId}/`;
             } else {
-                alert('Невірний пароль');
+                const data = await response.json();
+                console.error('Modal join error:', data);
+                alert(data.detail || 'Невірний пароль');
                 document.getElementById('modal-password-input').value = '';
             }
         } catch (error) {
             console.error('Помилка:', error);
             alert('Помилка при вході в кімнату');
         }
-    }
-
-    // Close modal on Enter key
-    document.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter' && document.getElementById('password-modal').style.display !== 'none') {
-            joinPrivateRoom();
-        }
-    });
-
-    document.getElementById('is-private-checkbox').onchange = function() {
-        const passwordInput = document.getElementById('room-password-input');
-        passwordInput.style.display = this.checked ? 'inline-block' : 'none';
-        if (!this.checked) passwordInput.value = '';
     };
 
-    document.getElementById('create-room-form').onsubmit = async function(e) {
+    // Room creation
+    document.getElementById('create-room-form').addEventListener('submit', async function(e) {
         e.preventDefault();
+        
+        const roomName = document.getElementById('new-room-name').value.trim();
+        const isPrivate = document.getElementById('is-private-checkbox').checked;
+        const password = document.getElementById('room-password-input').value.trim();
 
-        const name = document.getElementById('new-room-name').value.trim();
-        const is_private = document.getElementById('is-private-checkbox').checked;
-        const password = document.getElementById('room-password-input').value;
+        if (!roomName) {
+            alert('Введіть назву кімнати');
+            return;
+        }
+
+        if (isPrivate && !password) {
+            alert('Введіть пароль для приватної кімнати');
+            return;
+        }
 
         try {
+            const body = {
+                name: roomName,
+                is_private: isPrivate
+            };
+            if (isPrivate) {
+                body.password = password;
+            }
+
             const response = await fetch('/api/rooms/', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': getCookie('csrftoken')
+                    'X-CSRFToken': window.getCookie('csrftoken')
                 },
-                body: JSON.stringify({
-                    name: name,
-                    is_private: is_private,
-                    password: password
-                })
+                body: JSON.stringify(body)
             });
 
             if (response.ok) {
-                const createdRoom = await response.json();
-                window.location.href = `/room/${createdRoom.id}/`;
+                const data = await response.json();
+                console.log('Room created:', data);
+                window.location.href = `/room/${data.id}/`;
             } else {
-                const errorData = await response.json();
-                alert('Помилка створення: ' + JSON.stringify(errorData));
+                const data = await response.json();
+                alert('Помилка: ' + (data.detail || 'Не вдалося створити кімнату'));
             }
         } catch (error) {
-            console.error('Помилка під час запиту:', error);
+            console.error('Помилка:', error);
+            alert('Помилка при створенні кімнати');
         }
-    };
+    });
 
+    // Close modal on background click
+    document.getElementById('password-modal').addEventListener('click', (e) => {
+        if (e.target.id === 'password-modal') {
+            closePasswordModal();
+        }
+    });
+
+    // Handle Enter key in password input
+    document.getElementById('modal-password-input').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            joinPrivateRoom();
+        }
+    });
+});
+</script>
 
 {% endblock %}

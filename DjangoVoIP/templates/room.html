@@ -1,27 +1,634 @@
 {% extends 'base.html' %}
+{% load static %}
 {% block content %}
-<h2>Кімната: {{ room.name }}</h2>
-<a href="{% url 'menu' %}"><- Вийти в меню</a>
+
+<style>
+    .room-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding: 15px;
+        background: #2f3136;
+        border-radius: 12px;
+    }
+
+        .room-header h2 {
+            margin: 0;
+            color: #f2f2f2;
+        }
+
+        .room-header a {
+            color: #5865f2;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+            .room-header a:hover {
+                color: #4752c4;
+            }
+
+    .ts-container {
+        display: flex;
+        gap: 15px;
+        height: calc(100vh - 200px);
+    }
+
+    .sidebar {
+        width: 280px;
+        background: #2f3136;
+        border-radius: 12px;
+        padding: 15px;
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+    }
+
+        .sidebar h3 {
+            margin: 0 0 15px 0;
+            color: #f2f2f2;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+    #user-list {
+        list-style: none;
+        padding: 0;
+        margin: 0 0 15px 0;
+        flex: 1;
+        overflow-y: auto;
+    }
+
+    .user-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px;
+        margin-bottom: 8px;
+        background: #36393f;
+        border-radius: 8px;
+        transition: background 0.2s;
+    }
+
+        .user-item:hover {
+            background: #40444b;
+        }
+
+    .user-avatar {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #5865f2, #7289da);
+        color: white;
+        font-weight: 600;
+        font-size: 16px;
+        flex-shrink: 0;
+        text-transform: uppercase;
+    }
+
+    .user-item:nth-child(2n) .user-avatar {
+        background: linear-gradient(135deg, #43b581, #5bbe88);
+    }
+
+    .user-item:nth-child(3n) .user-avatar {
+        background: linear-gradient(135deg, #f04747, #f26a6a);
+    }
+
+    .user-item:nth-child(4n) .user-avatar {
+        background: linear-gradient(135deg, #faa61a, #fbb538);
+    }
+
+    .user-item:nth-child(5n) .user-avatar {
+        background: linear-gradient(135deg, #9b59b6, #b565d8);
+    }
+
+    .user-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .username {
+        color: #f2f2f2;
+        font-size: 14px;
+        font-weight: 500;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: block;
+    }
+
+    .user-status {
+        color: #72767d;
+        font-size: 12px;
+        margin-top: 2px;
+    }
+
+        .user-status.muted {
+            color: #f04747;
+        }
+
+    .mute-btn-container {
+        display: flex;
+        gap: 8px;
+        margin-top: auto;
+        padding-top: 15px;
+        border-top: 1px solid #36393f;
+    }
+
+    #mute-btn {
+        flex: 1;
+        padding: 10px 12px;
+        background: #5865f2;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 500;
+        transition: background 0.2s;
+        font-size: 13px;
+    }
+
+        #mute-btn:hover {
+            background: #4752c4;
+        }
+
+        #mute-btn:active {
+            background: #3c45a5;
+        }
+
+    .admin-menu-btn {
+        flex: 1;
+        padding: 10px 12px;
+        background: #43b581;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 500;
+        transition: background 0.2s;
+        font-size: 13px;
+        position: relative;
+    }
+
+        .admin-menu-btn:hover {
+            background: #3a9f6a;
+        }
+
+    #admin-panel {
+        position: relative;
+        display: none;
+    }
+
+    .admin-dropdown {
+        position: absolute;
+        bottom: calc(100% + 10px);
+        right: 0;
+        background: #36393f;
+        border-radius: 8px;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+        z-index: 100;
+        min-width: 200px;
+        overflow: hidden;
+    }
+
+        .admin-dropdown.hidden {
+            display: none;
+        }
+
+        .admin-dropdown button {
+            display: block;
+            width: 100%;
+            padding: 12px 15px;
+            border: none;
+            background: none;
+            color: #dbdbdb;
+            text-align: left;
+            cursor: pointer;
+            font-size: 13px;
+            transition: background 0.2s;
+            border-bottom: 1px solid #2f3136;
+        }
+
+            .admin-dropdown button:last-child {
+                border-bottom: none;
+            }
+
+            .admin-dropdown button:hover {
+                background: #40444b;
+            }
+
+            .admin-dropdown button.danger {
+                color: #f04747;
+            }
+
+                .admin-dropdown button.danger:hover {
+                    background: rgba(240, 71, 71, 0.1);
+                }
+
+    .chat-section {
+        flex: 1;
+        background: #2f3136;
+        border-radius: 12px;
+        padding: 15px;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+        .chat-section h3 {
+            margin: 0 0 15px 0;
+            color: #f2f2f2;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+    #chat-box {
+        flex: 1;
+        overflow-y: auto;
+        background: #36393f;
+        border-radius: 8px;
+        padding: 12px;
+        margin-bottom: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+        #chat-box p {
+            margin: 0;
+            padding: 8px 10px;
+            background: #40444b;
+            border-radius: 6px;
+            color: #dbdbdb;
+            font-size: 13px;
+            line-height: 1.4;
+            word-wrap: break-word;
+        }
+
+        #chat-box strong {
+            color: #5865f2;
+        }
+
+    #chat-input {
+        padding: 12px 15px;
+        background: #40444b;
+        color: #dbdbdb;
+        border: 1px solid #36393f;
+        border-radius: 6px;
+        font-size: 13px;
+        font-family: inherit;
+    }
+
+        #chat-input:focus {
+            outline: none;
+            border-color: #5865f2;
+            box-shadow: 0 0 0 2px rgba(88, 101, 242, 0.2);
+        }
+
+        #chat-input::placeholder {
+            color: #72767d;
+        }
+</style>
+
+<div class="room-header">
+    <h2>{{ room.name }}</h2>
+    <a href="{% url 'menu' %}">← Меню</a>
+</div>
 
 <div class="ts-container">
     <div class="sidebar">
         <h3>Учасники</h3>
         <ul id="user-list"></ul>
-        <button id="mute-btn" style="width:100%; padding:10px;">Вимкнути мікрофон</button>
+
+        <div class="mute-btn-container">
+            <button id="mute-btn">🎤 Мікрофон</button>
+            <button id="leave-room-btn" class="btn-secondary" onclick="leaveRoom()" style="flex: 1; padding: 10px 12px; background: #f04747; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; transition: background 0.2s; font-size: 13px;">👋 Покинути</button>
+            <div id="admin-panel">
+                <button class="admin-menu-btn">⚙️ Меню</button>
+                <div class="admin-dropdown hidden" id="admin-dropdown-menu">
+                    {% if room.is_private %}
+                    <button id="change-password-btn">🔑 Змінити пароль</button>
+                    <button id="generate-invite-btn">🔗 Посилання приєднання</button>
+                    <button id="add-member-btn">➕ Додати користувача</button>
+                    <button id="remove-member-btn">➖ Видалити користувача</button>
+                    {% endif %}
+                    <button id="delete-room-btn" class="danger">🗑️ Видалити кімнату</button>
+                </div>
+            </div>
+        </div>
     </div>
+
     <div class="chat-section">
         <h3>Текстовий Чат</h3>
-        <div id="chat-box" style="height: 250px; overflow-y: scroll;"></div>
-        <input type="text" id="chat-input" style="width:100%; padding:10px;" placeholder="Напишіть щось і натисніть Enter...">
+        <div id="chat-box"></div>
+        <input type="text" id="chat-input" placeholder="Напишіть щось і натисніть Enter...">
     </div>
 </div>
 
 <div id="remote-audios" style="display:none;"></div>
 
+<!-- Modals -->
+<div id="password-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>🔑 Змінити пароль</h3>
+            <button class="modal-close" data-modal="password-modal">&times;</button>
+        </div>
+        <input type="password" id="new-password-input" placeholder="Новий пароль">
+        <div class="modal-buttons">
+            <button class="btn-secondary" data-modal="password-modal">Скасувати</button>
+            <button id="confirm-password-btn" class="btn-primary">Підтвердити</button>
+        </div>
+    </div>
+</div>
+
+<div id="invite-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>🔗 Посилання приєднання</h3>
+            <button class="modal-close" data-modal="invite-modal">&times;</button>
+        </div>
+        <label for="expires-hours">Дійсне (годин):</label>
+        <input type="number" id="expires-hours" value="24" min="1">
+        <button id="generate-link-btn" class="btn-primary">Згенерувати</button>
+        <div id="invite-result" style="display:none; margin-top: 15px; padding: 12px; background: #36393f; border-radius: 6px;">
+            <p style="margin: 0 0 10px 0; color: #72767d; font-size: 12px;">Посилання:</p>
+            <p id="invite-link-text" style="margin: 0; color: #5865f2; word-break: break-all; font-size: 12px;"></p>
+            <button id="copy-invite-btn" class="btn-primary" style="margin-top: 10px;">Копіювати</button>
+        </div>
+        <div class="modal-buttons" style="margin-top: 15px;">
+            <button class="btn-secondary" data-modal="invite-modal">Скасувати</button>
+        </div>
+    </div>
+</div>
+
+<div id="add-member-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>➕ Додати користувача</h3>
+            <button class="modal-close" data-modal="add-member-modal">&times;</button>
+        </div>
+        <input type="text" id="username-input" placeholder="Ім'я користувача">
+        <div class="modal-buttons">
+            <button class="btn-secondary" data-modal="add-member-modal">Скасувати</button>
+            <button id="confirm-add-member-btn" class="btn-primary">Додати</button>
+        </div>
+    </div>
+</div>
+
+<div id="remove-member-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>➖ Видалити користувача</h3>
+            <button class="modal-close" data-modal="remove-member-modal">&times;</button>
+        </div>
+        <label for="remove-username-input">Виберіть користувача:</label>
+        <select id="remove-username-input">
+            <option value="">-- Виберіть користувача --</option>
+        </select>
+        <div class="modal-buttons">
+            <button class="btn-secondary" data-modal="remove-member-modal">Скасувати</button>
+            <button id="confirm-remove-member-btn" class="btn-danger">Видалити</button>
+        </div>
+    </div>
+</div>
+
+<div id="password-modal" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:white; padding:20px; border:1px solid #ccc; z-index:1000;">
+    <h3>Змінити пароль</h3>
+    <input type="password" id="new-password-input" placeholder="Новий пароль" style="width:100%; padding:8px; margin:10px 0;">
+    <button id="confirm-password-btn" style="width:100%; padding:8px; margin:10px 0;">Підтвердити</button>
+    <button id="cancel-password-btn" style="width:100%; padding:8px; margin:10px 0; background-color: #ccc;">Скасувати</button>
+</div>
+
+<div id="invite-modal" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:white; padding:20px; border:1px solid #ccc; z-index:1000;">
+    <h3>Посилання приєднання</h3>
+    <label for="expires-hours">Дійсне (годин):</label>
+    <input type="number" id="expires-hours" value="24" min="1" style="width:100%; padding:8px; margin:10px 0;">
+    <button id="generate-link-btn" style="width:100%; padding:8px; margin:10px 0;">Згенерувати</button>
+    <div id="invite-result" style="margin:10px 0; padding:10px; background:#f0f0f0; display:none;">
+        <p>Посилання: <span id="invite-link-text"></span></p>
+        <button id="copy-invite-btn" style="width:100%; padding:8px;">Копіювати</button>
+    </div>
+    <button id="cancel-invite-btn" style="width:100%; padding:8px; margin:10px 0; background-color: #ccc;">Скасувати</button>
+</div>
+
+<div id="add-member-modal" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:white; padding:20px; border:1px solid #ccc; z-index:1000;">
+    <h3>Додати користувача</h3>
+    <input type="text" id="username-input" placeholder="Ім'я користувача" style="width:100%; padding:8px; margin:10px 0;">
+    <button id="confirm-add-member-btn" style="width:100%; padding:8px; margin:10px 0;">Додати</button>
+    <button id="cancel-add-member-btn" style="width:100%; padding:8px; margin:10px 0; background-color: #ccc;">Скасувати</button>
+</div>
+
+<style>
+    .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.7);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+
+        .modal.active {
+            display: flex;
+        }
+
+    .modal-content {
+        background: #36393f;
+        border-radius: 12px;
+        width: 90%;
+        max-width: 400px;
+        padding: 0;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 15px;
+        border-bottom: 1px solid #2f3136;
+    }
+
+        .modal-header h3 {
+            margin: 0;
+            color: #f2f2f2;
+            font-size: 16px;
+        }
+
+    .modal-close {
+        background: none;
+        border: none;
+        color: #72767d;
+        font-size: 24px;
+        cursor: pointer;
+        padding: 0;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: color 0.2s;
+    }
+
+        .modal-close:hover {
+            color: #f2f2f2;
+        }
+
+    #password-modal input,
+    #invite-modal input,
+    #invite-modal label,
+    #add-member-modal input,
+    #add-member-modal label,
+    #remove-member-modal label,
+    #remove-member-modal select {
+        display: block;
+        width: 100%;
+        padding: 10px 15px;
+        margin: 10px 15px;
+        background: #40444b;
+        color: #dbdbdb;
+        border: 1px solid #36393f;
+        border-radius: 6px;
+        font-size: 13px;
+        font-family: inherit;
+    }
+
+        #password-modal input:focus,
+        #invite-modal input:focus,
+        #add-member-modal input:focus,
+        #remove-member-modal select:focus {
+            outline: none;
+            border-color: #5865f2;
+            box-shadow: 0 0 0 2px rgba(88, 101, 242, 0.2);
+        }
+
+    #password-modal label,
+    #invite-modal label,
+    #add-member-modal label,
+    #remove-member-modal label {
+        padding: 10px 15px 5px 15px;
+        margin: 0;
+        color: #72767d;
+        font-size: 12px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    #remove-member-modal select {
+        padding: 8px 12px;
+    }
+
+    .modal-buttons {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+        padding: 15px;
+        border-top: 1px solid #2f3136;
+    }
+
+    .btn-primary,
+    .btn-secondary,
+    .btn-danger {
+        padding: 10px 16px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 500;
+        font-size: 13px;
+        transition: background 0.2s;
+    }
+
+    .btn-primary {
+        background: #5865f2;
+        color: white;
+    }
+
+        .btn-primary:hover {
+            background: #4752c4;
+        }
+
+    .btn-secondary {
+        background: #40444b;
+        color: #dbdbdb;
+    }
+
+        .btn-secondary:hover {
+            background: #4a4d52;
+        }
+
+    .btn-danger {
+        background: #f04747;
+        color: white;
+    }
+
+        .btn-danger:hover {
+            background: #d63c3c;
+        }
+</style>
+
 <script>
     const roomId = "{{ room.id }}";
     const currentUserId = {{ request.user.id }};
     const currentUsername = "{{ request.user.username }}";
+    const isPrivate = {{ room.is_private|lower }};
+    let isAdmin = false;
+    let connectedUsers = {};
+
+    // Modal management
+    document.querySelectorAll('.modal-close, [data-modal]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const modalId = btn.dataset.modal || btn.closest('.modal').id;
+            document.getElementById(modalId).classList.remove('active');
+        });
+    });
+
+    // Close modal on background click
+    document.querySelectorAll('.modal').forEach(modal => {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.classList.remove('active');
+            }
+        });
+    });
+
+    function openModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) modal.classList.add('active');
+    }
+
+    function closeModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) modal.classList.remove('active');
+    }
+
+    // Admin dropdown toggle
+    document.querySelector('.admin-menu-btn')?.addEventListener('click', (e) => {
+        const dropdown = document.getElementById('admin-dropdown-menu');
+        dropdown?.classList.toggle('hidden');
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        const dropdown = document.getElementById('admin-dropdown-menu');
+        const adminPanel = document.getElementById('admin-panel');
+        if (dropdown && adminPanel && !adminPanel.contains(e.target)) {
+            dropdown.classList.add('hidden');
+        }
+    });
 </script>
-<script src="/static/js/room.js"></script>
+
+<script src="{% static 'js/room.js' %}"></script>
+
 {% endblock %}

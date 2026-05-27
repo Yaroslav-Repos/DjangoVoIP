@@ -4,7 +4,7 @@ from channels.routing import ProtocolTypeRouter, URLRouter
 from channels.auth import AuthMiddlewareStack
 from channels.sessions import SessionMiddlewareStack
 from channels.security.websocket import AllowedHostsOriginValidator
-from django.urls import path
+from django.urls import path, re_path
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'DjangoVoIP.settings')
 django_asgi_app = get_asgi_application()
@@ -17,7 +17,7 @@ application = ProtocolTypeRouter({
         SessionMiddlewareStack(
             AuthMiddlewareStack(
                 URLRouter([
-                    path("ws/room/<uuid:room_id>/", TeamSpeakConsumer.as_asgi()),
+                    re_path(r"ws/room/(?P<room_id>[0-9a-f-]+)/$", TeamSpeakConsumer.as_asgi()),
                 ])
             )
         )

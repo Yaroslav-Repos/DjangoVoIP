@@ -20,11 +20,43 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-secret-key-test')
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = ['.trycloudflare.com', 'localhost', '127.0.0.1', 'web']
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-SESSION_COOKIE_SECURE = not DEBUG
-CSRF_COOKIE_SECURE = not DEBUG
-CSRF_TRUSTED_ORIGINS = ['https://*.trycloudflare.com', 'http://localhost:8000']
+ALLOWED_HOSTS = ["*"]
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+    "http://0.0.0.0:8000",
+    "http://192.168.0.200:8000",
+    "http://192.168.0.132:8000",
+    "http://192.168.1.100:8000",
+    "http://192.168.100.100:8000",
+    "https://localhost:8000",
+    "https://127.0.0.1:8000",
+    "https://0.0.0.0:8000",
+    "https://192.168.0.200:8000",
+    "https://192.168.0.132:8000",
+    "https://192.168.1.100:8000",
+    "https://192.168.100.100:8000",
+    "https://yaroslavtestapp.pp.ua"
+]
+
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost:8000',
+    'http://127.0.0.1:8000',
+    'http://0.0.0.0:8000',
+    'http://192.168.0.200:8000',
+    'http://192.168.0.132:8000',
+    'http://192.168.1.100:8000',
+    'http://192.168.100.100:8000',
+    'https://localhost:8000',
+    'https://127.0.0.1:8000',
+    'https://0.0.0.0:8000',
+    'https://192.168.0.200:8000',
+    'https://192.168.0.132:8000',
+    'https://192.168.1.100:8000',
+    'https://192.168.100.100:8000',
+    'https://yaroslavtestapp.pp.ua'
+]
 
 INSTALLED_APPS = [
     'daphne',
@@ -37,16 +69,19 @@ INSTALLED_APPS = [
     'rest_framework',
     'channels',
     'rooms',
+    'django_extensions'
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    
 ]
 
 ROOT_URLCONF = 'DjangoVoIP.urls'
@@ -102,8 +137,19 @@ REST_FRAMEWORK = {
     ],
 }
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 LOGIN_URL = 'login'
+
+# HTTPS/Security Settings
+SECURE_SSL_REDIRECT = False  # Set to True only when using HTTPS in production
+SECURE_HSTS_SECONDS = 0  # Set to 31536000 (1 year) in production
+SECURE_HSTS_INCLUDE_SUBDOMAINS = False
+SECURE_HSTS_PRELOAD = False
+SESSION_COOKIE_SECURE = False  # Set to True when using HTTPS
+CSRF_COOKIE_SECURE = False  # Set to True when using HTTPS

@@ -1,6 +1,8 @@
 import uuid
 from django.db import models
 from django.contrib.auth.models import User
+from django.utils import timezone
+from datetime import timedelta
 
 class Room(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -28,6 +30,22 @@ class ChatMessage(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     text = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+class RoomInviteLink(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name="invite_links")
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name="created_invites")
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    is_used = models.BooleanField(default=False)
+    used_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="used_invites")
+    used_at = models.DateTimeField(null=True, blank=True)
+
+    def is_valid(self):
+        return not self.is_used and timezone.now() < self.expires_at
 
     class Meta:
         ordering = ['-created_at']

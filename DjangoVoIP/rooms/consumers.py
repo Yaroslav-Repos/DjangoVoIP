@@ -1,21 +1,58 @@
 import json
+import logging
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 from .models import RoomMembership, ChatMessage
+
+logger = logging.getLogger(__name__)
 
 class TeamSpeakConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self.room_id = self.scope['url_route']['kwargs']['room_id']
         self.room_group_name = f'ts_room_{self.room_id}'
+        self.active_users_key = f'users_{self.room_id}'
         self.user = self.scope['user']
 
+        logger.info(f'User {self.user} connecting to room {self.room_id}')
+
         if not self.user.is_authenticated or not await self.is_member():
+            logger.warning(f'User {self.user} not authenticated or not member')
             await self.close(code=4003)
             return
 
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)
         await self.accept()
 
+        logger.info(f'User {self.user} connected to room {self.room_id}')
+
+        # ✅ Альтернатива: зберігати в Channel Layer cache
+        # Отримати список активних користувачів з memory
+        if not hasattr(self.channel_layer, '_active_users'):
+            self.channel_layer._active_users = {}
+
+        if self.room_id not in self.channel_layer._active_users:
+            self.channel_layer._active_users[self.room_id] = {}
+
+        # Отримати копію для відправки новому користувачу
+        existing_users_copy = self.channel_layer._active_users[self.room_id].copy()
+        if self.user.id in existing_users_copy:
+            del existing_users_copy[self.user.id]
+
+        # ✅ Відправити новому користувачу список всіх активних
+        for user_id, username in existing_users_copy.items():
+            await self.send(text_data=json.dumps({
+                'stream': 'presence',
+                'payload': {
+                    'action': 'join',
+                    'user_id': user_id,
+                    'username': username
+                }
+            }))
+
+        # ✅ Додати цього користувача до активних
+        self.channel_layer._active_users[self.room_id][self.user.id] = self.user.username
+
+        # Notify all users that new user joined
         await self.channel_layer.group_send(
             self.room_group_name,
             {
@@ -28,6 +65,15 @@ class TeamSpeakConsumer(AsyncWebsocketConsumer):
 
     async def disconnect(self, close_code):
         if hasattr(self, 'room_group_name'):
+            # ✅ Видалити користувача з активних
+            if hasattr(self.channel_layer, '_active_users'):
+                if self.room_id in self.channel_layer._active_users:
+                    self.channel_layer._active_users[self.room_id].pop(self.user.id, None)
+                    # Видалити кімнату якщо порожня
+                    if not self.channel_layer._active_users[self.room_id]:
+                        del self.channel_layer._active_users[self.room_id]
+
+            # Send leave message to all users in group
             await self.channel_layer.group_send(
                 self.room_group_name,
                 {
@@ -37,7 +83,9 @@ class TeamSpeakConsumer(AsyncWebsocketConsumer):
                     'username': self.user.username
                 }
             )
+            # Remove from group but keep membership in database (preserves roles, etc.)
             await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
+            logger.info(f'User {self.user} disconnected from room {self.room_id}')
 
     async def receive(self, text_data):
         try:
@@ -105,12 +153,9 @@ class TeamSpeakConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def save_message(self, text):
-        ChatMessage.objects.create(
+        return ChatMessage.objects.create(
             room_id=self.room_id,
             user=self.user,
             text=text
         )
 
-    @database_sync_to_async
-    def save_message(self, text):
-        return ChatMessage.objects.create(room_id=self.room_id, user=self.user, text=text)
