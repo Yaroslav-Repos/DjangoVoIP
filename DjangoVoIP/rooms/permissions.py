@@ -5,7 +5,7 @@ class IsRoomMember(permissions.BasePermission):
         return request.user and request.user.is_authenticated
 
     def has_object_permission(self, request, view, obj):
-        # ✅ Публічні кімнати - всім дозволено
+        # Публічні кімнати - всім дозволено
         if not obj.is_private:
             return True
 
@@ -22,7 +22,7 @@ class IsRoomAdmin(permissions.BasePermission):
         return request.user and request.user.is_authenticated
 
     def has_object_permission(self, request, view, obj):
-        # ✅ Перевірка ID до порівняння об'єктів
+        #  Перевірка ID до порівняння об'єктів
         if obj.created_by_id == request.user.id:
             return True
         membership = obj.memberships.filter(user=request.user, role='admin').exists()

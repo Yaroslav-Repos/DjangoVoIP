@@ -11,6 +11,7 @@
         padding: 15px;
         background: #2f3136;
         border-radius: 12px;
+        overflow: visible;
     }
 
         .room-header h2 {
@@ -18,15 +19,103 @@
             color: #f2f2f2;
         }
 
+        .room-header-actions {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
         .room-header a {
             color: #5865f2;
             text-decoration: none;
             font-weight: 500;
             transition: color 0.2s;
+            padding: 8px 12px;
+            border-radius: 6px;
         }
 
             .room-header a:hover {
                 color: #4752c4;
+                background: rgba(88, 101, 242, 0.1);
+            }
+
+        .settings-dropdown-container {
+            position: relative;
+            overflow: visible;
+        }
+
+        .settings-menu-btn {
+            padding: 8px 12px;
+            background: #5865f2;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background 0.2s;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 40px;
+            height: 40px;
+        }
+
+            .settings-menu-btn:hover {
+                background: #4752c4;
+            }
+
+            .settings-menu-btn:active {
+                background: #3c45a5;
+            }
+
+        .settings-dropdown {
+            position: absolute;
+            top: calc(100% + 8px);
+            right: 0;
+            background: #36393f;
+            border-radius: 8px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+            z-index: 100;
+            min-width: 220px;
+            overflow: hidden;
+            border: 1px solid #2f3136;
+            display: none;
+        }
+
+            .settings-dropdown.visible {
+                display: block;
+            }
+
+            .settings-dropdown .settings-option {
+                display: block;
+                width: 100%;
+                padding: 12px 15px;
+                border: none;
+                background: none;
+                color: #dbdbdb;
+                text-align: left;
+                cursor: pointer;
+                font-size: 13px;
+                transition: background 0.2s;
+            }
+
+                .settings-dropdown .settings-option:hover {
+                    background: #40444b;
+                }
+
+                .settings-dropdown .settings-option.danger {
+                    color: #f04747;
+                }
+
+                    .settings-dropdown .settings-option.danger:hover {
+                        background: rgba(240, 71, 71, 0.1);
+                    }
+
+            .dropdown-separator {
+                border: none;
+                border-top: 1px solid #2f3136;
+                margin: 0;
             }
 
     .ts-container {
@@ -297,8 +386,20 @@
 </style>
 
 <div class="room-header">
-    <h2>{{ room.name }}</h2>
-    <a href="{% url 'menu' %}">← Меню</a>
+    <div>
+        <h2>{{ room.name }}</h2>
+    </div>
+    <div class="room-header-actions">
+        <a href="{% url 'menu' %}">← До кімнат</a>
+        <div class="settings-dropdown-container">
+            <button class="settings-menu-btn" id="settings-toggle-btn" title="Параметри">⚙️</button>
+            <div class="settings-dropdown" id="settings-dropdown-menu">
+                <button id="user-settings-btn" class="settings-option">👤 Параметри користувача</button>
+                <hr class="dropdown-separator">
+                <button id="leave-room-menu-btn" class="settings-option danger">👋 Покинути кімнату</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <div class="ts-container">
@@ -306,11 +407,20 @@
         <h3>Учасники</h3>
         <ul id="user-list"></ul>
 
-        <div class="mute-btn-container">
-            <button id="mute-btn">🎤 Мікрофон</button>
-            <button id="leave-room-btn" class="btn-secondary" onclick="leaveRoom()" style="flex: 1; padding: 10px 12px; background: #f04747; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; transition: background 0.2s; font-size: 13px;">👋 Покинути</button>
+        <div style="background: #36393f; border-radius: 8px; padding: 10px; margin-bottom: 10px; border: 1px solid #2f3136;">
+            <div style="display: flex; justify-content: space-between; color: #dbdbdb; font-size: 12px; margin-bottom: 6px; font-weight: 500;">
+                <span>🎤</span>
+                <span id="audio-level-text" style="color: #43b581;">0%</span>
+            </div>
+            <div id="audio-level-bar" style="width: 100%; height: 6px; background: #202225; border-radius: 3px; overflow: hidden;">
+                <div id="audio-level-indicator" style="width: 0%; height: 100%; background: #43b581; transition: width 0.1s ease, background-color 0.1s ease;"></div>
+            </div>
+        </div>
+
+        <div class="mute-btn-container" style="margin-top: 0; padding-top: 10px;">
+            <button id="mute-btn">🔊</button>
             <div id="admin-panel">
-                <button class="admin-menu-btn">⚙️ Меню</button>
+                <button class="admin-menu-btn">⚙️ Адмін</button>
                 <div class="admin-dropdown hidden" id="admin-dropdown-menu">
                     {% if room.is_private %}
                     <button id="change-password-btn">🔑 Змінити пароль</button>
@@ -332,6 +442,19 @@
 </div>
 
 <div id="remote-audios" style="display:none;"></div>
+
+<!-- User Volume Context Menu -->
+<div id="user-volume-context" class="user-volume-context" style="display: none; position: fixed; background: #36393f; border: 1px solid #2f3136; border-radius: 8px; padding: 12px; min-width: 220px; box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3); z-index: 2000; max-width: calc(100vw - 20px);">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <label style="color: #f2f2f2; font-weight: 600; margin: 0; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;" id="context-username">Користувач</label>
+        <button id="close-context" style="background: none; border: none; color: #72767d; cursor: pointer; font-size: 18px; padding: 0; margin-left: 8px; flex-shrink: 0;">×</button>
+    </div>
+    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+        <input type="range" id="volume-slider" min="0" max="100" value="100" style="flex: 1; cursor: pointer; min-width: 100px;">
+        <span id="volume-percent" style="color: #f2f2f2; font-weight: 500; min-width: 40px; text-align: right; font-size: 12px;">100%</span>
+    </div>
+    <button id="mute-user-btn" style="width: 100%; padding: 8px 12px; background: #f04747; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; font-size: 12px; transition: background 0.2s; white-space: nowrap;">🔇</button>
+</div>
 
 <!-- Modals -->
 <div id="password-modal" class="modal">
@@ -399,32 +522,6 @@
     </div>
 </div>
 
-<div id="password-modal" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:white; padding:20px; border:1px solid #ccc; z-index:1000;">
-    <h3>Змінити пароль</h3>
-    <input type="password" id="new-password-input" placeholder="Новий пароль" style="width:100%; padding:8px; margin:10px 0;">
-    <button id="confirm-password-btn" style="width:100%; padding:8px; margin:10px 0;">Підтвердити</button>
-    <button id="cancel-password-btn" style="width:100%; padding:8px; margin:10px 0; background-color: #ccc;">Скасувати</button>
-</div>
-
-<div id="invite-modal" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:white; padding:20px; border:1px solid #ccc; z-index:1000;">
-    <h3>Посилання приєднання</h3>
-    <label for="expires-hours">Дійсне (годин):</label>
-    <input type="number" id="expires-hours" value="24" min="1" style="width:100%; padding:8px; margin:10px 0;">
-    <button id="generate-link-btn" style="width:100%; padding:8px; margin:10px 0;">Згенерувати</button>
-    <div id="invite-result" style="margin:10px 0; padding:10px; background:#f0f0f0; display:none;">
-        <p>Посилання: <span id="invite-link-text"></span></p>
-        <button id="copy-invite-btn" style="width:100%; padding:8px;">Копіювати</button>
-    </div>
-    <button id="cancel-invite-btn" style="width:100%; padding:8px; margin:10px 0; background-color: #ccc;">Скасувати</button>
-</div>
-
-<div id="add-member-modal" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:white; padding:20px; border:1px solid #ccc; z-index:1000;">
-    <h3>Додати користувача</h3>
-    <input type="text" id="username-input" placeholder="Ім'я користувача" style="width:100%; padding:8px; margin:10px 0;">
-    <button id="confirm-add-member-btn" style="width:100%; padding:8px; margin:10px 0;">Додати</button>
-    <button id="cancel-add-member-btn" style="width:100%; padding:8px; margin:10px 0; background-color: #ccc;">Скасувати</button>
-</div>
-
 <style>
     .modal {
         display: none;
@@ -450,6 +547,9 @@
         max-width: 400px;
         padding: 0;
         box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        box-sizing: border-box;
+        max-height: 90vh;
+        overflow-y: auto;
     }
 
     .modal-header {
@@ -458,6 +558,8 @@
         align-items: center;
         padding: 15px;
         border-bottom: 1px solid #2f3136;
+        box-sizing: border-box;
+        flex-shrink: 0;
     }
 
         .modal-header h3 {
@@ -493,7 +595,7 @@
     #remove-member-modal label,
     #remove-member-modal select {
         display: block;
-        width: 100%;
+        width: calc(100% - 30px);
         padding: 10px 15px;
         margin: 10px 15px;
         background: #40444b;
@@ -502,6 +604,7 @@
         border-radius: 6px;
         font-size: 13px;
         font-family: inherit;
+        box-sizing: border-box;
     }
 
         #password-modal input:focus,
@@ -518,16 +621,22 @@
     #add-member-modal label,
     #remove-member-modal label {
         padding: 10px 15px 5px 15px;
-        margin: 0;
+        margin: 10px 0 5px 0;
         color: #72767d;
         font-size: 12px;
         font-weight: 500;
         text-transform: uppercase;
         letter-spacing: 0.5px;
+        display: block;
+        width: calc(100% - 30px);
+        box-sizing: border-box;
     }
 
     #remove-member-modal select {
         padding: 8px 12px;
+        width: calc(100% - 30px) !important;
+        margin: 10px 15px !important;
+        box-sizing: border-box !important;
     }
 
     .modal-buttons {
@@ -536,6 +645,8 @@
         justify-content: flex-end;
         padding: 15px;
         border-top: 1px solid #2f3136;
+        box-sizing: border-box;
+        flex-shrink: 0;
     }
 
     .btn-primary,
@@ -548,6 +659,7 @@
         font-weight: 500;
         font-size: 13px;
         transition: background 0.2s;
+        box-sizing: border-box;
     }
 
     .btn-primary {
@@ -576,6 +688,40 @@
         .btn-danger:hover {
             background: #d63c3c;
         }
+
+    /* ✅ Контейнер для форм всередині модалів */
+    .modal-content > *:not(.modal-header):not(.modal-buttons) {
+        box-sizing: border-box;
+    }
+
+    .modal-content > input,
+    .modal-content > label,
+    .modal-content > select,
+    .modal-content > button:not(.modal-close) {
+        width: calc(100% - 30px);
+        margin-left: 15px;
+        margin-right: 15px;
+        box-sizing: border-box;
+    }
+
+    .modal-content > input:first-of-type {
+        margin-top: 15px;
+    }
+
+    .modal-content > label:first-of-type {
+        margin-top: 15px;
+    }
+
+    .modal-content > div {
+        margin-left: 15px;
+        margin-right: 15px;
+        margin-bottom: 10px;
+        box-sizing: border-box;
+    }
+
+    .modal-content > div:last-of-type:not(.modal-buttons) {
+        margin-bottom: 15px;
+    }
 </style>
 
 <script>
@@ -629,6 +775,7 @@
     });
 </script>
 
-<script src="{% static 'js/room.js' %}"></script>
+<script data-cfasync="false" src="{% static 'js/room.js' %}?v=1.0.1"></script>
 
 {% endblock %}
+

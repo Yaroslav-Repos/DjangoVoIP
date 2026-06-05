@@ -23,7 +23,7 @@ urlpatterns = [
     path('room/<uuid:room_id>/', RoomDetailView.as_view(), name='room_detail'),
 
     path('api/', include(router.urls)),
-    # ✅ UUID routes для custom actions (замість стандартних)
+   
     re_path(r'^api/rooms/(?P<pk>[0-9a-f\-]+)/join/$', RoomViewSet.as_view({'post': 'join_private'}), name='room-join'),
     re_path(r'^api/rooms/(?P<pk>[0-9a-f\-]+)/join-with-link/$', RoomViewSet.as_view({'post': 'join_with_link'}), name='room-join-with-link'),
     re_path(r'^api/rooms/(?P<pk>[0-9a-f\-]+)/change-password/$', RoomViewSet.as_view({'post': 'change_password'}), name='room-change-password'),
@@ -31,6 +31,7 @@ urlpatterns = [
     re_path(r'^api/rooms/(?P<pk>[0-9a-f\-]+)/add-member/$', RoomViewSet.as_view({'post': 'add_member'}), name='room-add-member'),
     re_path(r'^api/rooms/(?P<pk>[0-9a-f\-]+)/remove-member/$', RoomViewSet.as_view({'post': 'remove_member'}), name='room-remove-member'),
     re_path(r'^api/rooms/(?P<pk>[0-9a-f\-]+)/leave/$', RoomViewSet.as_view({'post': 'leave'}), name='room-leave'),
+    re_path(r'^api/rooms/(?P<pk>[0-9a-f\-]+)/members/$', RoomViewSet.as_view({'get': 'members'}), name='room-members'),
     re_path(r'^api/rooms/(?P<pk>[0-9a-f\-]+)/messages/$', RoomViewSet.as_view({'get': 'messages'}), name='room-messages'),
     path('api/turn-credentials/', TurnCredentialsView.as_view(), name='turn_credentials'),
 ]

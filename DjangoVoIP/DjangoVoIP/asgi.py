@@ -9,7 +9,7 @@ from django.urls import path, re_path
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'DjangoVoIP.settings')
 django_asgi_app = get_asgi_application()
 
-from rooms.consumers import TeamSpeakConsumer
+from rooms.consumers import SpeakConsumer
 
 application = ProtocolTypeRouter({
     "http": django_asgi_app,
@@ -17,7 +17,7 @@ application = ProtocolTypeRouter({
         SessionMiddlewareStack(
             AuthMiddlewareStack(
                 URLRouter([
-                    re_path(r"ws/room/(?P<room_id>[0-9a-f-]+)/$", TeamSpeakConsumer.as_asgi()),
+                    re_path(r"ws/room/(?P<room_id>[0-9a-f-]+)/$", SpeakConsumer.as_asgi()),
                 ])
             )
         )

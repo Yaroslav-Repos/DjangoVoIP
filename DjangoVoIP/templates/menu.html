@@ -1,4 +1,204 @@
 {% extends 'base.html' %}
+
+{% block header_menu %}
+<style>
+    .header-menu-wrapper {
+        position: relative;
+        display: flex;
+        align-items: center;
+    }
+
+    .menu-button {
+        background: #5865f2;
+        color: white;
+        border: none;
+        padding: 10px 16px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        transition: background 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        white-space: nowrap;
+    }
+
+    .menu-button:hover {
+        background: #4752c4;
+    }
+
+    .menu-button:active {
+        background: #3c45a5;
+    }
+
+    .menu-dropdown {
+        position: absolute;
+        top: 100%;
+        right: 0;
+        background: #36393f;
+        border-radius: 8px;
+        min-width: 280px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        z-index: 1001;
+        margin-top: 8px;
+        display: none;
+        flex-direction: column;
+    }
+
+    .menu-dropdown.active {
+        display: flex;
+    }
+
+    .menu-dropdown-section {
+        padding: 12px 16px;
+        border-bottom: 1px solid #2c2f33;
+    }
+
+    .menu-dropdown-section:last-child {
+        border-bottom: none;
+    }
+
+    .menu-dropdown-title {
+        color: #b9bbbe;
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 10px;
+    }
+
+    .menu-dropdown-item {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-bottom: 10px;
+    }
+
+    .menu-dropdown-item:last-child {
+        margin-bottom: 0;
+    }
+
+    .menu-dropdown input {
+        padding: 8px 12px;
+        background: #40444b;
+        color: #dbdbdb;
+        border: 1px solid #36393f;
+        border-radius: 4px;
+        font-size: 13px;
+        font-family: inherit;
+        box-sizing: border-box;
+    }
+
+    .menu-dropdown input:focus {
+        outline: none;
+        border-color: #5865f2;
+        box-shadow: 0 0 0 2px rgba(88, 101, 242, 0.2);
+    }
+
+    .menu-dropdown input::placeholder {
+        color: #72767d;
+    }
+
+    .menu-dropdown-label {
+        color: #dbdbdb;
+        font-size: 12px;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        cursor: pointer;
+        user-select: none;
+    }
+
+    .menu-dropdown-label input {
+        margin: 0;
+        cursor: pointer;
+    }
+
+    .menu-dropdown-btn {
+        padding: 8px 12px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: 500;
+        font-size: 12px;
+        transition: all 0.2s;
+        white-space: nowrap;
+    }
+
+    .menu-dropdown-btn-primary {
+        background: #5865f2;
+        color: white;
+    }
+
+    .menu-dropdown-btn-primary:hover {
+        background: #4752c4;
+    }
+
+    .menu-dropdown-btn-success {
+        background: #43b581;
+        color: white;
+    }
+
+    .menu-dropdown-btn-success:hover {
+        background: #3a9f6a;
+    }
+
+    .menu-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 1000;
+    }
+
+    .menu-overlay.active {
+        display: block;
+    }
+</style>
+
+<div class="header-menu-wrapper">
+    <button id="menu-button" class="menu-button">☰ Меню</button>
+    <div id="menu-dropdown" class="menu-dropdown">
+        <!-- Create Room Section -->
+        <div class="menu-dropdown-section">
+            <div class="menu-dropdown-title">➕ Створити кімнату</div>
+            <form id="create-room-form-dropdown">
+                <div class="menu-dropdown-item">
+                    <input type="text" id="new-room-name-dropdown" placeholder="Назва кімнати" required>
+                    <label class="menu-dropdown-label">
+                        <input type="checkbox" id="is-private-checkbox-dropdown">
+                        Приватна кімната
+                    </label>
+                    <input type="password" id="room-password-input-dropdown" placeholder="Пароль" style="display: none;">
+                </div>
+                <button type="submit" class="menu-dropdown-btn menu-dropdown-btn-primary" style="width: 100%;">Створити та увійти</button>
+            </form>
+        </div>
+
+        <!-- Join Room Section -->
+        <div class="menu-dropdown-section">
+            <div class="menu-dropdown-title">🔓 Приєднатися</div>
+            <div class="menu-dropdown-item">
+                <label style="color: #b9bbbe; font-size: 11px;">За UUID та паролем:</label>
+                <input type="text" id="room-id-input-dropdown" placeholder="UUID кімнати">
+                <input type="password" id="join-password-input-dropdown" placeholder="Пароль">
+                <button type="button" onclick="joinPrivateRoomByUUID_dropdown()" class="menu-dropdown-btn menu-dropdown-btn-primary" style="width: 100%;">Увійти</button>
+            </div>
+            <div class="menu-dropdown-item">
+                <label style="color: #b9bbbe; font-size: 11px;">За посиланням:</label>
+                <input type="text" id="invite-link-input-dropdown" placeholder="Посилання (token UUID)">
+                <button type="button" onclick="joinWithInviteLink_dropdown()" class="menu-dropdown-btn menu-dropdown-btn-success" style="width: 100%;">Приєднатися</button>
+            </div>
+        </div>
+    </div>
+</div>
+<div id="menu-overlay" class="menu-overlay"></div>
+{% endblock %}
+
 {% block content %}
 
 <style>
@@ -15,25 +215,11 @@
         margin-bottom: 20px;
     }
 
-    .section h3 {
-        margin: 0 0 15px 0;
-        color: #f2f2f2;
-        font-size: 16px;
-        font-weight: 600;
-    }
-
     .section h2 {
         margin: 20px 0 15px 0;
         color: #f2f2f2;
         font-size: 18px;
         font-weight: 600;
-    }
-
-    .form-group {
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-        align-items: center;
     }
 
     .form-input {
@@ -58,95 +244,38 @@
         color: #72767d;
     }
 
-    .form-checkbox {
-        display: flex;
-        align-items: center;
-        gap: 8px;
+    .btn-secondary {
+        background: #40444b;
         color: #dbdbdb;
-        font-size: 13px;
-        cursor: pointer;
-        user-select: none;
-    }
-
-    .form-checkbox input {
-        cursor: pointer;
-    }
-
-    .btn-primary,
-    .btn-secondary,
-    .btn-success,
-    .btn-danger {
-        padding: 10px 20px;
+        padding: 10px 16px;
         border: none;
         border-radius: 6px;
         cursor: pointer;
         font-weight: 500;
         font-size: 13px;
-        transition: all 0.2s;
+        transition: background 0.2s;
         white-space: nowrap;
-    }
-
-    .btn-primary {
-        background: #5865f2;
-        color: white;
-    }
-
-    .btn-primary:hover {
-        background: #4752c4;
-    }
-
-    .btn-primary:active {
-        background: #3c45a5;
-    }
-
-    .btn-success {
-        background: #43b581;
-        color: white;
-    }
-
-    .btn-success:hover {
-        background: #3a9f6a;
-    }
-
-    .btn-danger {
-        background: #f04747;
-        color: white;
-    }
-
-    .btn-danger:hover {
-        background: #d63c3c;
-    }
-
-    .btn-secondary {
-        background: #40444b;
-        color: #dbdbdb;
     }
 
     .btn-secondary:hover {
         background: #4a4d52;
     }
 
-    .join-section {
-        display: flex;
-        flex-direction: column;
-        gap: 15px;
-    }
-
-    .join-subsection {
-        display: flex;
-        gap: 10px;
-        align-items: flex-end;
-        flex-wrap: wrap;
-    }
-
-    .join-subsection label {
-        color: #72767d;
-        font-size: 12px;
+    .btn-primary {
+        background: #5865f2;
+        color: white;
+        padding: 10px 16px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
         font-weight: 500;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        width: 100%;
-        margin-bottom: -5px;
+        font-size: 13px;
+        transition: background 0.2s;
+        white-space: nowrap;
+    }
+
+    .btn-primary:hover {
+        background: #4752c4;
     }
 
     .room-list {
@@ -225,6 +354,12 @@
         font-size: 13px;
     }
 
+    .empty-state-icon {
+        font-size: 32px;
+        margin-bottom: 10px;
+        opacity: 0.5;
+    }
+
     .modal {
         display: none;
         position: fixed;
@@ -252,9 +387,9 @@
     }
 
     .modal-content h3 {
-        margin: 0 0 15px 0;
+        margin-bottom: 16px;
+        font-size: 18px;
         color: #f2f2f2;
-        font-size: 16px;
     }
 
     .modal-content input {
@@ -286,61 +421,46 @@
         flex: 1;
     }
 
-    .empty-state-icon {
-        font-size: 32px;
-        margin-bottom: 10px;
-        opacity: 0.5;
+    @media (max-width: 768px) {
+        .menu-dropdown {
+            min-width: 250px;
+        }
     }
 </style>
 
 <div class="menu-container">
-    <!-- Create Room Section -->
+    <!-- Search Section -->
     <div class="section">
-        <h3>➕ Створити нову кімнату</h3>
-        <form id="create-room-form">
-            <div class="form-group">
-                <input type="text" id="new-room-name" class="form-input" placeholder="Назва кімнати" required>
-                <label class="form-checkbox">
-                    <input type="checkbox" id="is-private-checkbox">
-                    Приватна
-                </label>
-            </div>
-            <div class="form-group" id="password-group" style="display: none;">
-                <input type="password" id="room-password-input" class="form-input" placeholder="Пароль для кімнати">
-            </div>
-            <button type="submit" class="btn-primary" style="margin-top: 10px;">Створити та увійти</button>
-        </form>
-    </div>
-
-    <!-- Join Room Section -->
-    <div class="section">
-        <h3>🔓 Приєднатися до приватної кімнати</h3>
-        <div class="join-section">
-            <div class="join-subsection">
-                <label>За UUID та паролем:</label>
-                <input type="text" id="room-id-input" class="form-input" placeholder="UUID кімнати">
-                <input type="password" id="join-password-input" class="form-input" placeholder="Пароль">
-                <button onclick="joinPrivateRoomByUUID()" class="btn-primary">Увійти</button>
-            </div>
-
-            <div class="join-subsection">
-                <label>За посиланням приєднання:</label>
-                <input type="text" id="invite-link-input" class="form-input" placeholder="Посилання (token UUID)">
-                <button onclick="joinWithInviteLink()" class="btn-success">Приєднатися</button>
-            </div>
+        <div style="display: flex; gap: 10px; align-items: center;">
+            <input 
+                type="text" 
+                id="search-input" 
+                class="form-input" 
+                placeholder="🔍 Пошук кімнат за назвою..."
+                style="flex: 1; padding: 12px 15px; margin: 0;"
+            >
+            <button id="clear-search-btn" class="btn-secondary" style="display: none; white-space: nowrap; padding: 10px 16px;">✕ Очистити</button>
         </div>
-    </div>
-
-    <!-- Public Rooms Section -->
-    <div class="section">
-        <h2>🌐 Публічні кімнати</h2>
-        <div id="public-rooms" class="room-list"></div>
     </div>
 
     <!-- Private Rooms Section -->
     <div class="section">
         <h2>🔒 Мої приватні кімнати</h2>
         <div id="private-rooms" class="room-list"></div>
+        <div id="private-loading" style="display: none; text-align: center; padding: 20px; color: #72767d;">
+            Завантаження...
+        </div>
+        <button id="private-load-more" class="btn-primary" style="display: none; width: 100%; margin-top: 15px;">Завантажити ще</button>
+    </div>
+
+    <!-- Public Rooms Section -->
+    <div class="section">
+        <h2>🌐 Публічні кімнати</h2>
+        <div id="public-rooms" class="room-list"></div>
+        <div id="public-loading" style="display: none; text-align: center; padding: 20px; color: #72767d;">
+            Завантаження...
+        </div>
+        <button id="public-load-more" class="btn-primary" style="display: none; width: 100%; margin-top: 15px;">Завантажити ще</button>
     </div>
 </div>
 
@@ -362,20 +482,13 @@ document.addEventListener('DOMContentLoaded', async function() {
     console.log('=== MENU SCRIPT LOADED ===');
 
     let currentRoomId = null;
+    let currentPublicPage = 1;
+    let currentPrivatePage = 1;
+    let hasMorePublic = true;
+    let hasMorePrivate = true;
 
-    // Toggle password field based on private checkbox
-    document.getElementById('is-private-checkbox').addEventListener('change', function() {
-        const passwordGroup = document.getElementById('password-group');
-        if (this.checked) {
-            passwordGroup.style.display = 'flex';
-            document.getElementById('room-password-input').required = true;
-        } else {
-            passwordGroup.style.display = 'none';
-            document.getElementById('room-password-input').required = false;
-        }
-    });
-
-    window.getCookie = function(name) {
+    // Helper functions
+    function getCookie(name) {
         let cookieValue = null;
         if (document.cookie && document.cookie !== '') {
             const cookies = document.cookie.split(';');
@@ -388,117 +501,291 @@ document.addEventListener('DOMContentLoaded', async function() {
             }
         }
         return cookieValue;
-    };
+    }
+    window.getCookie = getCookie;
 
-    // Get URL parameters
-    function getUrlParam(name) {
-        const urlParams = new URLSearchParams(window.location.search);
-        return urlParams.get(name);
+    function createRoomCard(room) {
+        const roomCard = document.createElement('div');
+        roomCard.className = 'room-card' + (room.is_private ? ' private' : '');
+
+        if (room.is_private) {
+            roomCard.innerHTML = `
+                <div class="room-card-header">
+                    <span class="room-card-name">🔒 ${room.name}</span>
+                    <span class="room-badge private">Приватна</span>
+                </div>
+                <a href="/room/${room.id}/">Увійти →</a>
+            `;
+        } else {
+            roomCard.innerHTML = `
+                <div class="room-card-header">
+                    <span class="room-card-name">🌐 ${room.name}</span>
+                    <span class="room-badge">Публічна</span>
+                </div>
+                <a href="/room/${room.id}/">Увійти →</a>
+            `;
+        }
+        return roomCard;
     }
 
-    // Load rooms from API
-    async function loadRooms() {
+    async function loadRooms(page = 1, type = 'all') {
         try {
-            const response = await fetch('/api/rooms/');
+            let url = `/api/rooms/?page=${page}&page_size=10`;
+
+            const searchQuery = document.getElementById('search-input')?.value.trim();
+            if (searchQuery) {
+                url += `&search=${encodeURIComponent(searchQuery)}`;
+            }
+
+            if (type === 'public') {
+                url += '&is_private=false';
+            } else if (type === 'private') {
+                url += '&is_private=true';
+            }
+
+            console.log('Loading rooms:', url);
+            const response = await fetch(url);
             const data = await response.json();
-            const rooms = data.results || data;
+            const rooms = data.results || [];
+            const pageInfo = {
+                hasMore: data.next || false,
+                nextPage: page + 1,
+                count: data.count || 0,
+                numPages: data.num_pages || 1
+            };
 
             const publicRoomsDiv = document.getElementById('public-rooms');
             const privateRoomsDiv = document.getElementById('private-rooms');
+            const publicLoadMoreBtn = document.getElementById('public-load-more');
+            const privateLoadMoreBtn = document.getElementById('private-load-more');
 
-            publicRoomsDiv.innerHTML = '';
-            privateRoomsDiv.innerHTML = '';
+            if (page === 1) {
+                if (type === 'public' || type === 'all') {
+                    publicRoomsDiv.innerHTML = '';
+                }
+                if (type === 'private' || type === 'all') {
+                    privateRoomsDiv.innerHTML = '';
+                }
+            }
 
             rooms.forEach(room => {
-                const roomCard = document.createElement('div');
-                roomCard.className = 'room-card' + (room.is_private ? ' private' : '');
-
+                const roomCard = createRoomCard(room);
                 if (room.is_private) {
-                    roomCard.innerHTML = `
-                        <div class="room-card-header">
-                            <span class="room-card-name">🔒 ${room.name}</span>
-                            <span class="room-badge private">Приватна</span>
-                        </div>
-                        <a href="/room/${room.id}/">Увійти →</a>
-                    `;
                     privateRoomsDiv.appendChild(roomCard);
                 } else {
-                    roomCard.innerHTML = `
-                        <div class="room-card-header">
-                            <span class="room-card-name">🌐 ${room.name}</span>
-                            <span class="room-badge">Публічна</span>
-                        </div>
-                        <a href="/room/${room.id}/">Увійти →</a>
-                    `;
                     publicRoomsDiv.appendChild(roomCard);
                 }
             });
 
-            if (publicRoomsDiv.children.length === 0) {
+            if ((type === 'public' || type === 'all') && publicRoomsDiv.children.length === 0 && page === 1) {
                 publicRoomsDiv.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🔕</div><p>Немає публічних кімнат</p></div>';
             }
-            if (privateRoomsDiv.children.length === 0) {
+
+            if ((type === 'private' || type === 'all') && privateRoomsDiv.children.length === 0 && page === 1) {
                 privateRoomsDiv.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🚫</div><p>Ви не є членом жодної приватної кімнати</p></div>';
             }
+
+            if (type === 'public' || type === 'all') {
+                publicLoadMoreBtn.style.display = pageInfo.hasMore ? 'block' : 'none';
+            }
+
+            if (type === 'private' || type === 'all') {
+                privateLoadMoreBtn.style.display = pageInfo.hasMore ? 'block' : 'none';
+            }
+
+            return pageInfo;
         } catch (error) {
             console.error('Помилка завантаження кімнат:', error);
+            return { hasMore: false };
         }
     }
 
-    // Check if URL has invite link parameters
-    async function handleInviteLinkFromUrl() {
-        const token = getUrlParam('invite');
-        const roomId = getUrlParam('room');
+    // SEARCH handlers
+    const searchInput = document.getElementById('search-input');
+    const clearSearchBtn = document.getElementById('clear-search-btn');
+    let searchTimeout;
 
-        if (token && roomId) {
-            console.log('Found invite link in URL:', { token, roomId });
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            if (this.value.trim()) {
+                clearSearchBtn.style.display = 'block';
+            } else {
+                clearSearchBtn.style.display = 'none';
+            }
+
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                currentPublicPage = 1;
+                currentPrivatePage = 1;
+                loadRooms(1, 'public');
+                loadRooms(1, 'private');
+            }, 300);
+        });
+
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                clearTimeout(searchTimeout);
+                currentPublicPage = 1;
+                currentPrivatePage = 1;
+                loadRooms(1, 'public');
+                loadRooms(1, 'private');
+            }
+        });
+    }
+
+    if (clearSearchBtn) {
+        clearSearchBtn.addEventListener('click', function() {
+            searchInput.value = '';
+            searchInput.focus();
+            this.style.display = 'none';
+            currentPublicPage = 1;
+            currentPrivatePage = 1;
+            loadRooms(1, 'public');
+            loadRooms(1, 'private');
+        });
+    }
+
+    // Initial load
+    const initialPublicPageInfo = await loadRooms(1, 'public');
+    const initialPrivatePageInfo = await loadRooms(1, 'private');
+
+    hasMorePublic = initialPublicPageInfo?.hasMore || false;
+    hasMorePrivate = initialPrivatePageInfo?.hasMore || false;
+
+    // Load more buttons
+    document.getElementById('public-load-more')?.addEventListener('click', async function() {
+        if (!hasMorePublic) return;
+
+        document.getElementById('public-loading').style.display = 'block';
+        this.style.display = 'none';
+
+        currentPublicPage++;
+        const pageInfo = await loadRooms(currentPublicPage, 'public');
+        hasMorePublic = pageInfo.hasMore;
+
+        document.getElementById('public-loading').style.display = 'none';
+        if (hasMorePublic) {
+            this.style.display = 'block';
+        }
+    });
+
+    document.getElementById('private-load-more')?.addEventListener('click', async function() {
+        if (!hasMorePrivate) return;
+
+        document.getElementById('private-loading').style.display = 'block';
+        this.style.display = 'none';
+
+        currentPrivatePage++;
+        const pageInfo = await loadRooms(currentPrivatePage, 'private');
+        hasMorePrivate = pageInfo.hasMore;
+
+        document.getElementById('private-loading').style.display = 'none';
+        if (hasMorePrivate) {
+            this.style.display = 'block';
+        }
+    });
+
+    // ===== MENU DROPDOWN LOGIC =====
+    const menuButton = document.getElementById('menu-button');
+    const menuDropdown = document.getElementById('menu-dropdown');
+    const menuOverlay = document.getElementById('menu-overlay');
+    const isPrivateCheckboxDropdown = document.getElementById('is-private-checkbox-dropdown');
+    const passwordInputDropdown = document.getElementById('room-password-input-dropdown');
+    const createRoomFormDropdown = document.getElementById('create-room-form-dropdown');
+
+    if (menuButton) {
+        menuButton.addEventListener('click', (e) => {
+            console.log('Menu button clicked');
+            e.stopPropagation();
+            menuDropdown.classList.toggle('active');
+            menuOverlay.classList.toggle('active');
+        });
+    }
+
+    if (menuOverlay) {
+        menuOverlay.addEventListener('click', () => {
+            menuDropdown.classList.remove('active');
+            menuOverlay.classList.remove('active');
+        });
+    }
+
+    document.addEventListener('click', (e) => {
+        if (menuDropdown && !e.target.closest('.header-menu-wrapper')) {
+            menuDropdown.classList.remove('active');
+            menuOverlay.classList.remove('active');
+        }
+    });
+
+    if (isPrivateCheckboxDropdown && passwordInputDropdown) {
+        isPrivateCheckboxDropdown.addEventListener('change', function() {
+            if (this.checked) {
+                passwordInputDropdown.style.display = 'block';
+                passwordInputDropdown.required = true;
+            } else {
+                passwordInputDropdown.style.display = 'none';
+                passwordInputDropdown.required = false;
+            }
+        });
+    }
+
+    if (createRoomFormDropdown) {
+        createRoomFormDropdown.addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const roomName = document.getElementById('new-room-name-dropdown').value.trim();
+            const isPrivate = document.getElementById('is-private-checkbox-dropdown').checked;
+            const password = document.getElementById('room-password-input-dropdown').value.trim();
+
+            if (!roomName) {
+                alert('Введіть назву кімнати');
+                return;
+            }
+
+            if (isPrivate && !password) {
+                alert('Введіть пароль для приватної кімнати');
+                return;
+            }
+
             try {
-                if (!token.trim() || !roomId.trim()) {
-                    console.warn('Invalid token or roomId');
-                    window.history.replaceState({}, document.title, window.location.pathname);
-                    return;
+                const body = {
+                    name: roomName,
+                    is_private: isPrivate
+                };
+                if (isPrivate) {
+                    body.password = password;
                 }
 
-                const response = await fetch(`/api/rooms/${roomId}/join-with-link/`, {
+                const response = await fetch('/api/rooms/', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-CSRFToken': window.getCookie('csrftoken')
+                        'X-CSRFToken': getCookie('csrftoken')
                     },
-                    body: JSON.stringify({ token: token })
+                    body: JSON.stringify(body)
                 });
 
                 if (response.ok) {
                     const data = await response.json();
-                    console.log('Joined room:', data);
-                    window.location.href = `/room/${roomId}/`;
+                    console.log('Room created:', data);
+                    window.location.href = `/room/${data.id}/`;
                 } else {
                     const data = await response.json();
-                    console.error('Join failed:', data);
-                    alert('Не вдалось приєднатися: ' + (data.detail || 'Невірне посилання'));
-                    window.history.replaceState({}, document.title, window.location.pathname);
+                    alert('Помилка: ' + (data.detail || 'Не вдалося створити кімнату'));
                 }
             } catch (error) {
-                console.error('Помилка при приєднанні за посиланням:', error);
-                alert('Помилка при приєднанні');
+                console.error('Помилка:', error);
+                alert('Помилка при створенні кімнати');
             }
-        }
+        });
     }
 
-    await loadRooms();
-    await handleInviteLinkFromUrl();
+    window.joinPrivateRoomByUUID_dropdown = async function() {
+        const roomId = document.getElementById('room-id-input-dropdown').value.trim();
+        const password = document.getElementById('join-password-input-dropdown').value.trim();
 
-    window.joinPrivateRoomByUUID = async function() {
-        const roomId = document.getElementById('room-id-input').value.trim();
-        const password = document.getElementById('join-password-input').value.trim();
-
-        if (!roomId) {
-            alert('Введіть UUID кімнати');
-            return;
-        }
-
-        if (!password) {
-            alert('Введіть пароль');
+        if (!roomId || !password) {
+            alert('Введіть UUID та пароль кімнати');
             return;
         }
 
@@ -507,20 +794,17 @@ document.addEventListener('DOMContentLoaded', async function() {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': window.getCookie('csrftoken')
+                    'X-CSRFToken': getCookie('csrftoken')
                 },
                 body: JSON.stringify({ password: password })
             });
 
             if (response.ok) {
-                const data = await response.json();
-                console.log('Join response:', data);
                 window.location.href = `/room/${roomId}/`;
             } else {
                 const data = await response.json();
-                console.error('Join error:', data);
-                alert(data.detail || 'Невірний пароль або помилка доступу');
-                document.getElementById('join-password-input').value = '';
+                alert(data.detail || 'Невірний пароль');
+                document.getElementById('join-password-input-dropdown').value = '';
             }
         } catch (error) {
             console.error('Помилка:', error);
@@ -528,39 +812,38 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     };
 
-    window.joinWithInviteLink = async function() {
-        const token = document.getElementById('invite-link-input').value.trim();
-        const roomId = document.getElementById('room-id-input').value.trim();
+    window.joinWithInviteLink_dropdown = async function() {
+        const inviteLink = document.getElementById('invite-link-input-dropdown').value.trim();
 
-        if (!token) {
-            alert('Введіть посилання приєднання (token)');
-            return;
-        }
-
-        if (!roomId) {
-            alert('Введіть UUID кімнати');
+        if (!inviteLink) {
+            alert('Введіть посилання для приєднання');
             return;
         }
 
         try {
+            const token = inviteLink;
+            const roomId = document.getElementById('room-id-input-dropdown').value.trim();
+
+            if (!roomId) {
+                alert('Спочатку введіть UUID кімнати');
+                return;
+            }
+
             const response = await fetch(`/api/rooms/${roomId}/join-with-link/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': window.getCookie('csrftoken')
+                    'X-CSRFToken': getCookie('csrftoken')
                 },
                 body: JSON.stringify({ token: token })
             });
 
             if (response.ok) {
-                const data = await response.json();
-                console.log('Join via link response:', data);
                 window.location.href = `/room/${roomId}/`;
             } else {
                 const data = await response.json();
-                console.error('Join via link error:', data);
                 alert(data.detail || 'Невірне посилання');
-                document.getElementById('invite-link-input').value = '';
+                document.getElementById('invite-link-input-dropdown').value = '';
             }
         } catch (error) {
             console.error('Помилка:', error);
@@ -568,6 +851,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     };
 
+    // Password modal handlers
     window.openPasswordModal = function(roomId, roomName) {
         currentRoomId = roomId;
         document.getElementById('modal-room-name').textContent = 'Кімната: ' + roomName;
@@ -593,18 +877,15 @@ document.addEventListener('DOMContentLoaded', async function() {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': window.getCookie('csrftoken')
+                    'X-CSRFToken': getCookie('csrftoken')
                 },
                 body: JSON.stringify({ password: password })
             });
 
             if (response.ok) {
-                const data = await response.json();
-                console.log('Modal join response:', data);
                 window.location.href = `/room/${currentRoomId}/`;
             } else {
                 const data = await response.json();
-                console.error('Modal join error:', data);
                 alert(data.detail || 'Невірний пароль');
                 document.getElementById('modal-password-input').value = '';
             }
@@ -614,64 +895,14 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     };
 
-    // Room creation
-    document.getElementById('create-room-form').addEventListener('submit', async function(e) {
-        e.preventDefault();
-        
-        const roomName = document.getElementById('new-room-name').value.trim();
-        const isPrivate = document.getElementById('is-private-checkbox').checked;
-        const password = document.getElementById('room-password-input').value.trim();
-
-        if (!roomName) {
-            alert('Введіть назву кімнати');
-            return;
-        }
-
-        if (isPrivate && !password) {
-            alert('Введіть пароль для приватної кімнати');
-            return;
-        }
-
-        try {
-            const body = {
-                name: roomName,
-                is_private: isPrivate
-            };
-            if (isPrivate) {
-                body.password = password;
-            }
-
-            const response = await fetch('/api/rooms/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': window.getCookie('csrftoken')
-                },
-                body: JSON.stringify(body)
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                console.log('Room created:', data);
-                window.location.href = `/room/${data.id}/`;
-            } else {
-                const data = await response.json();
-                alert('Помилка: ' + (data.detail || 'Не вдалося створити кімнату'));
-            }
-        } catch (error) {
-            console.error('Помилка:', error);
-            alert('Помилка при створенні кімнати');
-        }
-    });
-
-    // Close modal on background click
+    // Modal background close
     document.getElementById('password-modal').addEventListener('click', (e) => {
         if (e.target.id === 'password-modal') {
             closePasswordModal();
         }
     });
 
-    // Handle Enter key in password input
+    // Enter key in password input
     document.getElementById('modal-password-input').addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
             joinPrivateRoom();

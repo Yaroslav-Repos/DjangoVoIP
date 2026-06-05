@@ -40,19 +40,26 @@ class LoginView(View):
         return render(request, 'login.html', {'form': form})
 
 class LogoutView(View):
-    def get(self, request):
+    def post(self, request):
+        # CSRF 
         logout(request)
         return redirect('login')
+
+    def get(self, request):
+        # redirect до форми logout
+
+        return redirect('menu')
 
 class MenuView(View):
     def get(self, request):
         if not request.user.is_authenticated:
             return redirect('login')
 
-        from django.db.models import Q, Exists, OuterRef
+        from django.db.models import Q
 
-        # ✅ ОПТИМІЗОВАНО: Union query з пагінацією в БД
-        # Замість завантаження всіх записів в-пам'ять, пагінуємо на рівні БД
+        # Фільтруємо кімнати - показуємо тільки доступні користувачеві
+        # - Публічні кімнати (всім)
+        # - Приватні кімнати (тільки для членів)
         rooms_queryset = Room.objects.filter(
             Q(is_private=False) | Q(is_private=True, memberships__user=request.user)
         ).distinct().order_by('-created_at')
@@ -69,19 +76,25 @@ class RoomDetailView(View):
 
         room = get_object_or_404(Room, id=room_id)
 
-        # ✅ ОПТИМІЗОВАНО: Перевірка членства + додавання в одному запиті
-        membership, created = RoomMembership.objects.get_or_create(
-            user=request.user, 
-            room=room,
-            defaults={'role': 'member'}
-        )
-
-        # Якщо кімната приватна і користувач був добавлений через get_or_create
-        # (тобто щойно додано), то дозвіл дати якщо вже був membre до цього
-        if room.is_private and created:
-            # Видалити неправомерний доступ
-            membership.delete()
-            return render(request, 'menu.html', {'error': 'Кімната приватна. Потрібно зайти через API /join/'})
+        # Приватна кімната - перевіра доступу
+        if room.is_private:
+            # Перевіра чи користувач член приватної кімнати
+            membership = room.memberships.filter(user=request.user).first()
+            if not membership:
+                # Спроба несанкціонованого доступу
+                return render(
+                    request, 
+                    'menu.html', 
+                    {'error': 'Кімната приватна. Потрібно приєднатись через приватне посилання або пароль.'},
+                    status=403
+                )
+        else:
+            #  Публічна кімната - автоматичне додавання в члени
+            membership, created = RoomMembership.objects.get_or_create(
+                user=request.user, 
+                room=room,
+                defaults={'role': 'member'}
+            )
 
         return render(request, 'room.html', {'room': room})
 
@@ -95,19 +108,84 @@ class RoomViewSet(viewsets.ModelViewSet):
         user = self.request.user
         from django.db.models import Q
 
-        # ✅ ВСІ кімнати доступні для отримання (перевірка дозволів в permissions)
-        # Публічні - завжди доступні
-        # Приватні - перевіяються в join_private() та join_with_link()
-        queryset = Room.objects.all().order_by('-created_at').prefetch_related('created_by')
+        # list action - показуємо тільки доступні користувачеві кімнати
+        # - Публічні - всім
+        # - Приватні - тільки тим, хто член
+        # 
+        # Для retrieve/update/delete - перевіряється в permissions
+
+        if self.action == 'list':
+            # Отримуємо фільтр is_private з query параметра (true/false/None)
+            is_private_param = self.request.query_params.get('is_private')
+
+            if is_private_param is not None:
+
+                is_private = is_private_param.lower() in ('true', '1', 'yes')
+                if is_private:
+                    # Приватні - тільки для членів
+                    queryset = Room.objects.filter(
+                        is_private=True,
+                        memberships__user=user
+                    ).distinct()
+                else:
+                    # Публічні - для всіх
+                    queryset = Room.objects.filter(is_private=False)
+            else:
+                # Без фільтра - показуємо все доступне
+                queryset = Room.objects.filter(
+                    Q(is_private=False) | Q(is_private=True, memberships__user=user)
+                ).distinct()
+
+            queryset = queryset.order_by('-created_at').prefetch_related('created_by')
+        else:
+            # Для інших операцій дозволяємо доступ до всіх, перевірку робить permissions
+            queryset = Room.objects.all().order_by('-created_at').prefetch_related('created_by')
 
         return queryset
+
+    def list(self, request, *args, **kwargs):
+        """ПАГІНАЦІЯ + ПОШУК"""
+        queryset = self.filter_queryset(self.get_queryset())
+
+        # Пошук за назвою кімнати (регістронезалежний)
+        search_query = request.query_params.get('search', '').strip()
+        if search_query:
+            queryset = queryset.filter(name__icontains=search_query)
+
+        # Отримати розмір сторінки з query параметра (за замовчуванням 10)
+        page_size = request.query_params.get('page_size', 10)
+        try:
+            page_size = int(page_size)
+            if page_size < 1 or page_size > 100:
+                page_size = 10
+        except (ValueError, TypeError):
+            page_size = 10
+
+        paginator = Paginator(queryset, page_size)
+        page_number = request.query_params.get('page', 1)
+
+        try:
+            page_obj = paginator.page(page_number)
+        except:
+            page_obj = paginator.page(1)
+
+        serializer = self.get_serializer(page_obj, many=True)
+        return Response({
+            'count': paginator.count,
+            'next': paginator.num_pages > int(page_number) if page_number else False,
+            'previous': int(page_number) > 1 if page_number else False,
+            'num_pages': paginator.num_pages,
+            'results': serializer.data
+        })
 
     def get_permissions(self):
         if self.action in ['list', 'create', 'join_private', 'join_with_link']:
             return [IsAuthenticated()]
-        elif self.action in ['retrieve', 'messages', 'leave']:
+        elif self.action in ['retrieve', 'messages', 'leave', 'members']:
+            #  тільки членам кімнати
             return [IsAuthenticated(), IsRoomMember()]
         elif self.action in ['update', 'partial_update', 'destroy', 'change_password', 'generate_invite_link', 'add_member', 'remove_member']:
+            #  адміністративні дії - тільки адміну
             return [IsAuthenticated(), IsRoomAdmin()]
         return [IsAuthenticated(), IsRoomMember()]
 
@@ -116,8 +194,7 @@ class RoomViewSet(viewsets.ModelViewSet):
         RoomMembership.objects.create(user=self.request.user, room=room, role='admin')
 
     def perform_destroy(self, instance):
-        # ✅ ОПТИМІЗОВАНО: Очистити всі мембершіпи перед видаленням кімнати
-        # Це запобігає багу, коли нова кімната з тим же ім'ям дає доступ старим членам
+
         RoomMembership.objects.filter(room=instance).delete()
         instance.delete()
 
@@ -127,29 +204,38 @@ class RoomViewSet(viewsets.ModelViewSet):
         room = self.get_object()
         password = request.data.get('password')
 
-        # ✅ Перевірити чи користувач вже membre
+        #  ПЕРЕВІРКА 1: Користувач вже член кімнати
         existing_membership = room.memberships.filter(user=request.user).first()
         if existing_membership:
             return Response({"status": "already_member"})
 
-        # Публічна кімната - вхід без пароля
+        #  ПЕРЕВІРКА 2: Публічна кімната - вхід без пароля
         if not room.is_private:
             membership = RoomMembership.objects.create(user=request.user, room=room)
             return Response({"status": "joined"})
 
-        # Приватна кімната - потребує пароль
+        #  ПЕРЕВІРКА 3: Приватна кімната - потребує пароль
         if not password:
             return Response(
                 {"detail": "Пароль потрібен для приватної кімнати."},
                 status=status.HTTP_403_FORBIDDEN
             )
 
+        #  ПЕРЕВІРКА 4: Пароль має розумну довжину
+        if len(password) > 500:
+            return Response(
+                {"detail": "Пароль занадто довгий."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        #  ПЕРЕВІРКА 5: Перевірка пароля (безпечна)
         if not room.password or not check_password(password, room.password):
             return Response(
                 {"detail": "Невірний пароль."},
                 status=status.HTTP_403_FORBIDDEN
             )
 
+        #  ПЕРЕВІРКА 6: Створити членство
         membership = RoomMembership.objects.create(user=request.user, room=room)
         return Response({"status": "joined"})
 
@@ -158,27 +244,46 @@ class RoomViewSet(viewsets.ModelViewSet):
         room = self.get_object()
         invite_token = request.data.get('token')
 
+        #  ПЕРЕВІРКА 1: Токен обов'язковий
         if not invite_token:
             return Response(
                 {"detail": "Токен посилання потрібен."},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        #  ПЕРЕВІРКА 2: Токен має розумну довжину (UUID)
+        if len(str(invite_token)) > 100:
+            return Response(
+                {"detail": "Невірний формат токена."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        #  ПЕРЕВІРКА 3: Токен існує в БД
         try:
             invite = RoomInviteLink.objects.get(id=invite_token)
         except RoomInviteLink.DoesNotExist:
             return Response({"detail": "Невірне посилання."}, status=status.HTTP_404_NOT_FOUND)
 
-        # Перевірка що посилання належить цій кімнаті
+        #  ПЕРЕВІРКА 4: Посилання належить цій кімнаті
         if invite.room_id != room.id:
             return Response(
                 {"detail": "Посилання не належить цій кімнаті."},
                 status=status.HTTP_403_FORBIDDEN
             )
 
+        #  ПЕРЕВІРКА 5: Посилання ще дійсне
         if not invite.is_valid():
-            return Response({"detail": "Посилання закінчилось або вже використано."}, status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {"detail": "Посилання закінчилось або вже використано."}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
 
+        # ПЕРЕВІРКА 6: Користувач не вже член
+        existing_membership = room.memberships.filter(user=request.user).first()
+        if existing_membership:
+            return Response({"status": "already_member"})
+
+        #  ПЕРЕВІРКА 7: Створити членство та позначити посилання як використане
         membership, created = RoomMembership.objects.get_or_create(user=request.user, room=room)
 
         # Mark link as used
@@ -195,30 +300,44 @@ class RoomViewSet(viewsets.ModelViewSet):
         room = self.get_object()
         new_password = request.data.get('password')
 
-        # ✅ ОПТИМІЗОВАНО: Один запит для перевірки адміна
+        #  ПЕРЕВІРКА 1: Тільки адміни можуть змінювати пароль
         is_admin = (
             room.created_by_id == request.user.id or 
             room.memberships.filter(user=request.user, role='admin').exists()
         )
-
         if not is_admin:
             return Response(
                 {"detail": "Ви не адміністратор цієї кімнати."},
                 status=status.HTTP_403_FORBIDDEN
             )
 
+        #  ПЕРЕВІРКА 2: Тільки приватні кімнати мають пароль
         if not room.is_private:
             return Response(
                 {"detail": "Тільки приватні кімнати мають пароль."},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        #  ПЕРЕВІРКА 3: Новий пароль обов'язковий
         if not new_password:
             return Response(
                 {"detail": "Пароль не може бути пустим."},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        #  ПЕРЕВІРКА 4: Пароль має розумну довжину (min 3, max 500)
+        if len(new_password) < 1:
+            return Response(
+                {"detail": "Пароль занадто короткий."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        if len(new_password) > 500:
+            return Response(
+                {"detail": "Пароль занадто довгий."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        #  ПЕРЕВІРКА 5: Зберегти новий пароль
         room.password = make_password(new_password)
         room.save()
         return Response({"status": "password_changed"})
@@ -227,26 +346,42 @@ class RoomViewSet(viewsets.ModelViewSet):
     def generate_invite_link(self, request, pk=None):
         room = self.get_object()
 
-        # ✅ ОПТИМІЗОВАНО: Один запит для перевірки адміна
+        #  ПЕРЕВІРКА 1: Тільки адміни можуть генерувати посилання
         is_admin = (
             room.created_by_id == request.user.id or 
             room.memberships.filter(user=request.user, role='admin').exists()
         )
-
         if not is_admin:
             return Response(
                 {"detail": "Ви не адміністратор цієї кімнати."},
                 status=status.HTTP_403_FORBIDDEN
             )
 
+        #  ПЕРЕВІРКА 2: Тільки приватні кімнати мають посилання
         if not room.is_private:
             return Response(
                 {"detail": "Посилання можуть генеруватися тільки для приватних кімнат."},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        #  ПЕРЕВІРКА 3: Параметр expires_hours має розумну величину
         expires_hours = request.data.get('expires_hours', 24)
+        try:
+            expires_hours = int(expires_hours)
+        except (ValueError, TypeError):
+            return Response(
+                {"detail": "expires_hours повинен бути числом."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
+        #  ПЕРЕВІРКА 4: Від 1 до 720 годин (30 днів)
+        if expires_hours < 1 or expires_hours > 720:
+            return Response(
+                {"detail": "expires_hours повинен бути від 1 до 720 годин."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        #  ПЕРЕВІРКА 5: Створити посилання
         invite = RoomInviteLink.objects.create(
             room=room,
             created_by=request.user,
@@ -261,35 +396,63 @@ class RoomViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], url_path='add-member')
     def add_member(self, request, pk=None):
         room = self.get_object()
-        username = request.data.get('username')
+        username = request.data.get('username', '').strip()
 
-        # ✅ ОПТИМІЗОВАНО: Один запит для перевірки адміна
+        #  ПЕРЕВІРКА 1: Тільки адміни можуть додавати членів
         is_admin = (
             room.created_by_id == request.user.id or 
             room.memberships.filter(user=request.user, role='admin').exists()
         )
-
         if not is_admin:
             return Response(
                 {"detail": "Ви не адміністратор цієї кімнати."},
                 status=status.HTTP_403_FORBIDDEN
             )
 
+        #  ПЕРЕВІРКА 2: Тільки приватні кімнати мають членів для додавання
         if not room.is_private:
             return Response(
                 {"detail": "Членів можна додавати тільки до приватних кімнат."},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        try:
-            user = User.objects.get(username=username)
-        except User.DoesNotExist:
+        #  ПЕРЕВІРКА 3: username обов'язковий
+        if not username:
             return Response(
-                {"detail": "Користувач не знайдений."},
-                status=status.HTTP_404_NOT_FOUND
+                {"detail": "username потрібен."},
+                status=status.HTTP_400_BAD_REQUEST
             )
 
-        membership, created = RoomMembership.objects.get_or_create(user=user, room=room)
+        #  ПЕРЕВІРКА 4: username має разумну довжину
+        if len(username) > 150:
+            return Response(
+                {"detail": "username занадто довгий."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        #  ПЕРЕВІРКА 5: Користувач існує (🛡️ БЕЗПЕКА: однакова відповідь для всіх помилок)
+        user = User.objects.filter(username=username).first()
+        if not user:
+            return Response(
+                {"detail": "Не вдалося додати користувача. Перевірте дані."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # ПЕРЕВІРКА 6: Не дозволяти додавати себе самого (якщо вже член)
+        if user.id == request.user.id:
+            existing = room.memberships.filter(user=user).first()
+            if existing:
+                return Response({
+                    "status": "already_member",
+                    "username": user.username
+                })
+
+        #  ПЕРЕВІРКА 7: Додати або отримати членство
+        membership, created = RoomMembership.objects.get_or_create(
+            user=user, 
+            room=room,
+            defaults={'role': 'member'}
+        )
 
         return Response({
             "status": "added" if created else "already_member",
@@ -299,47 +462,63 @@ class RoomViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], url_path='remove-member')
     def remove_member(self, request, pk=None):
         room = self.get_object()
-        user_id = request.data.get('user_id')
+        username = request.data.get('username', '').strip()
 
-        # ✅ ОПТИМІЗОВАНО: Один запит для перевірки адміна
+        #  ПЕРЕВІРКА 1: Тільки адміни можуть видаляти членів
         is_admin = (
             room.created_by_id == request.user.id or 
             room.memberships.filter(user=request.user, role='admin').exists()
         )
-
         if not is_admin:
             return Response(
                 {"detail": "Ви не адміністратор цієї кімнати."},
                 status=status.HTTP_403_FORBIDDEN
             )
 
+        #  ПЕРЕВІРКА 2: Тільки приватні кімнати мають членів для видалення
         if not room.is_private:
             return Response(
                 {"detail": "Членів можна видаляти тільки з приватних кімнат."},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        if not user_id:
+        #  ПЕРЕВІРКА 3: username обов'язковий
+        if not username:
             return Response(
-                {"detail": "user_id потрібен."},
+                {"detail": "username потрібен."},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        try:
-            user = User.objects.get(id=user_id)
-        except User.DoesNotExist:
+        #  ПЕРЕВІРКА 4: username має разумну довжину
+        if len(username) > 150:
             return Response(
-                {"detail": "Користувач не знайдений."},
-                status=status.HTTP_404_NOT_FOUND
+                {"detail": "username занадто довгий."},
+                status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Не дозволяти видаляти адміна
-        if user_id == room.created_by_id:
+        #  ПЕРЕВІРКА 5: Користувач існує (🛡️ БЕЗПЕКА: однакова відповідь для всіх помилок)
+        user = User.objects.filter(username=username).first()
+        if not user:
+            return Response(
+                {"detail": "Не вдалося видалити користувача. Перевірте дані."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        #  ПЕРЕВІРКА 6: Не дозволяти видаляти створювача кімнати
+        if user.id == room.created_by_id:
             return Response(
                 {"detail": "Не можна видалити створювача кімнати."},
                 status=status.HTTP_403_FORBIDDEN
             )
 
+        #  ПЕРЕВІРКА 7: Не дозволяти видаляти себе самого
+        if user.id == request.user.id:
+            return Response(
+                {"detail": "Використовуйте 'leave' для виходу з кімнати."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        #  ПЕРЕВІРКА 8: Користувач є членом кімнати
         try:
             membership = RoomMembership.objects.get(user=user, room=room)
             membership.delete()
@@ -358,13 +537,17 @@ class RoomViewSet(viewsets.ModelViewSet):
         room = self.get_object()
         user = request.user
 
-        # Не дозволяти адміну покинути кімнату (мусять видалити)
+        #  ПЕРЕВІРКА 1: Користувач автентифікований (permissions)
+        #  ПЕРЕВІРКА 2: Користувач є членом кімнати (IsRoomMember)
+
+        #  ПЕРЕВІРКА 3: Не дозволяти адміну просто покинути кімнату
         if user.id == room.created_by_id:
             return Response(
                 {"detail": "Адміністратор не може просто покинути кімнату. Видаліть кімнату замість цього."},
                 status=status.HTTP_403_FORBIDDEN
             )
 
+        #  ПЕРЕВІРКА 4: Видалити членство
         try:
             membership = RoomMembership.objects.get(user=user, room=room)
             membership.delete()
@@ -375,20 +558,81 @@ class RoomViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
 
+    @action(detail=True, methods=['get'], url_path='members')
+    def members(self, request, pk=None):
+        room = self.get_object()
+
+        #  БЕЗПЕКА: Тільки адміни можуть переглядати повний список членів
+        is_admin = (
+            room.created_by_id == request.user.id or 
+            room.memberships.filter(user=request.user, role='admin').exists()
+        )
+        if not is_admin:
+            return Response(
+                {"detail": "Нема прав для перегляду списку членів."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        #  Отримати всіх членів кімнати з пагінацією
+        members_queryset = room.memberships.select_related('user').order_by('-joined_at')
+
+        #  ПАГІНАЦІЯ: 20 членів на сторінку
+        page_size = request.query_params.get('page_size', 20)
+        try:
+            page_size = int(page_size)
+            if page_size < 1 or page_size > 100:
+                page_size = 20
+        except (ValueError, TypeError):
+            page_size = 20
+
+        paginator = Paginator(members_queryset, page_size)
+        page_number = request.query_params.get('page', 1)
+
+        try:
+            page_obj = paginator.page(page_number)
+        except:
+            page_obj = paginator.page(1)
+
+       
+        members_data = [
+            {
+                'username': membership.user.username,
+                'role': membership.role,
+                'joined_at': membership.joined_at.isoformat()
+            }
+            for membership in page_obj
+        ]
+
+        return Response({
+            'count': paginator.count,
+            'next': paginator.num_pages > int(page_number) if page_number else False,
+            'previous': int(page_number) > 1 if page_number else False,
+            'num_pages': paginator.num_pages,
+            'results': members_data
+        })
+
     @action(detail=True, methods=['get'], url_path='messages')
     def messages(self, request, pk=None):
         room = self.get_object()
-        # ✅ ОПТИМІЗОВАНО: select_related для User щоб не робити N+1 запиту
+  
         messages_queryset = ChatMessage.objects.filter(
             room=room
         ).select_related('user').order_by('-created_at')
 
-        page = self.paginate_queryset(messages_queryset)
-        if page is not None:
-            serializer = ChatMessageSerializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
-        serializer = ChatMessageSerializer(messages_queryset, many=True)
-        return Response(serializer.data)
+
+        paginator = Paginator(messages_queryset, 50)
+        page_number = request.query_params.get('page', 1)
+        try:
+            page_obj = paginator.page(page_number)
+        except:
+            page_obj = paginator.page(1)
+
+        serializer = ChatMessageSerializer(page_obj, many=True)
+        return Response({
+            'count': paginator.count,
+            'next': paginator.num_pages > int(page_number),
+            'results': serializer.data
+        })
 
 class TurnCredentialsView(APIView):
     permission_classes = [IsAuthenticated]

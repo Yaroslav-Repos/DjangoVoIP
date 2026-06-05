@@ -113,8 +113,7 @@ DATABASES = {
 }
 
 # Channel Layers Configuration
-# For development without Redis, use InMemoryChannelLayer
-# For production, use channels_redis with Redis server
+
 if DEBUG:
     CHANNEL_LAYERS = {
         'default': {
@@ -135,6 +134,8 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.SessionAuthentication',
     ],
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 10,
 }
 
 STATIC_URL = '/static/'

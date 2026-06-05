@@ -34,6 +34,13 @@
             justify-content: space-between;
             align-items: center;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            position: relative;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
         }
 
         header p {
@@ -206,14 +213,22 @@
 <body>
     <div class="container">
         <header>
+            <div class="header-left">
+                {% if request.user.is_authenticated %}
+                <div>👤 <strong>{{ request.user.username }}</strong></div>
+                {% else %}
+                <div>🔓 Не авторизовані</div>
+                {% endif %}
+                {% block header_menu %}{% endblock %}
+            </div>
+            <!-- Logout через POST request (CSRF protected) -->
             {% if request.user.is_authenticated %}
-            <div>👤 <strong>{{ request.user.username }}</strong></div>
-            <a href="{% url 'logout' %}">Вийти</a>
-            {% else %}
-            <div>🔓 Не авторизовані</div>
+            <form method="post" action="{% url 'logout' %}" style="display: inline; margin: 0;">
+                {% csrf_token %}
+                <button type="submit" style="background: #f04747; border: none; color: white; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500; transition: background 0.2s;">Вийти</button>
+            </form>
             {% endif %}
         </header>
-        {% csrf_token %}
         {% block content %}{% endblock %}
     </div>
 </body>

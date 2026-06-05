@@ -29,7 +29,7 @@ class RoomSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         if not request:
             return False
-        # ✅ ОПТИМІЗОВАНО: Використання ID замість об'єкту для порівняння
+        
         return obj.created_by_id == request.user.id or obj.memberships.filter(
             user=request.user, role='admin'
         ).exists()

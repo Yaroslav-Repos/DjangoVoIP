@@ -6,7 +6,8 @@ from .models import RoomMembership, ChatMessage
 
 logger = logging.getLogger(__name__)
 
-class TeamSpeakConsumer(AsyncWebsocketConsumer):
+class SpeakConsumer(AsyncWebsocketConsumer):
+
     async def connect(self):
         self.room_id = self.scope['url_route']['kwargs']['room_id']
         self.room_group_name = f'ts_room_{self.room_id}'
@@ -25,7 +26,7 @@ class TeamSpeakConsumer(AsyncWebsocketConsumer):
 
         logger.info(f'User {self.user} connected to room {self.room_id}')
 
-        # ✅ Альтернатива: зберігати в Channel Layer cache
+       
         # Отримати список активних користувачів з memory
         if not hasattr(self.channel_layer, '_active_users'):
             self.channel_layer._active_users = {}
@@ -38,7 +39,7 @@ class TeamSpeakConsumer(AsyncWebsocketConsumer):
         if self.user.id in existing_users_copy:
             del existing_users_copy[self.user.id]
 
-        # ✅ Відправити новому користувачу список всіх активних
+        #Відправити новому користувачу список всіх активних
         for user_id, username in existing_users_copy.items():
             await self.send(text_data=json.dumps({
                 'stream': 'presence',
@@ -49,10 +50,10 @@ class TeamSpeakConsumer(AsyncWebsocketConsumer):
                 }
             }))
 
-        # ✅ Додати цього користувача до активних
+        # Додати цього користувача до активних
         self.channel_layer._active_users[self.room_id][self.user.id] = self.user.username
 
-        # Notify all users that new user joined
+        
         await self.channel_layer.group_send(
             self.room_group_name,
             {
@@ -65,15 +66,17 @@ class TeamSpeakConsumer(AsyncWebsocketConsumer):
 
     async def disconnect(self, close_code):
         if hasattr(self, 'room_group_name'):
-            # ✅ Видалити користувача з активних
+
+            #  Видалити користувача з активних
             if hasattr(self.channel_layer, '_active_users'):
                 if self.room_id in self.channel_layer._active_users:
                     self.channel_layer._active_users[self.room_id].pop(self.user.id, None)
+
                     # Видалити кімнату якщо порожня
                     if not self.channel_layer._active_users[self.room_id]:
                         del self.channel_layer._active_users[self.room_id]
 
-            # Send leave message to all users in group
+            
             await self.channel_layer.group_send(
                 self.room_group_name,
                 {
@@ -83,7 +86,7 @@ class TeamSpeakConsumer(AsyncWebsocketConsumer):
                     'username': self.user.username
                 }
             )
-            # Remove from group but keep membership in database (preserves roles, etc.)
+            
             await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
             logger.info(f'User {self.user} disconnected from room {self.room_id}')
 
