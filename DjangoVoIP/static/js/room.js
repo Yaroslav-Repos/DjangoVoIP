@@ -696,7 +696,7 @@ function initializeEventListeners() {
             isMuted = !isMuted;
             if (localStream) localStream.getAudioTracks()[0].enabled = !isMuted;
             chatSocket.send(JSON.stringify({ stream: 'voice', payload: { isMuted: isMuted } }));
-            this.innerText = isMuted ? "🔊" : "🔇";
+            this.innerText = isMuted ? "🔇" : "🔊";
         });
     }
 
@@ -785,7 +785,7 @@ function initializeEventListeners() {
                 audioVolumeMap[currentContextUserId] = previousVolume;
                 volumeSlider.value = Math.round(previousVolume * 100);
                 volumePercent.textContent = Math.round(previousVolume * 100) + '%';
-                muteBtn.textContent = '🔇';
+                muteBtn.textContent = '🔊';
                 delete volumeBeforeMute[currentContextUserId];
             } else {
                 volumeBeforeMute[currentContextUserId] = currentVolume;
@@ -793,7 +793,7 @@ function initializeEventListeners() {
                 audioVolumeMap[currentContextUserId] = 0;
                 volumeSlider.value = 0;
                 volumePercent.textContent = '0%';
-                muteBtn.textContent = '🔊';
+                muteBtn.textContent = '🔇';
             }
         });
     }
@@ -877,7 +877,7 @@ function showVolumeContext(userId, username, event) {
     volumePercent.textContent = currentVolume + '%';
     contextUsername.textContent = username;
 
-    muteBtn.textContent = currentVolume === 0 ? '🔊' : '🔇';
+    muteBtn.textContent = currentVolume === 0 ? '🔇' : '🔊';
 
     let x = event.pageX;
     let y = event.pageY;
