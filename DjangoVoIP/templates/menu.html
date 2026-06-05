@@ -481,6 +481,37 @@
 document.addEventListener('DOMContentLoaded', async function() {
     console.log('=== MENU SCRIPT LOADED ===');
 
+    const urlParams = new URLSearchParams(window.location.search);
+    const inviteToken = urlParams.get('invite');
+    const roomIdFromUrl = urlParams.get('room');
+
+    if (inviteToken && roomIdFromUrl) {
+        console.log('Виявлено інвайт-посилання. Спроба автоприєднання до кімнати:', roomIdFromUrl);
+
+        try {
+            const response = await fetch(`/api/rooms/${roomIdFromUrl}/join-with-link/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken') // переконайтеся, що функція getCookie вже оголошена вище
+                },
+                body: JSON.stringify({ token: inviteToken }) // передаємо чистий UUID токена
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                // Якщо успішно приєдналися або вже є членом — редіректимо в кімнату
+                window.location.href = `/room/${roomIdFromUrl}/`;
+            } else {
+                const data = await response.json();
+                alert('Помилка приєднання за посиланням: ' + (data.detail || 'Недійсне посилання'));
+            }
+        } catch (error) {
+            console.error('Помилка запиту автоприєднання:', error);
+            alert('Не вдалося автоматично приєднатися до кімнати.');
+        }
+    }
+
     let currentRoomId = null;
     let currentPublicPage = 1;
     let currentPrivatePage = 1;
@@ -812,23 +843,34 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     };
 
-    window.joinWithInviteLink_dropdown = async function() {
-        const inviteLink = document.getElementById('invite-link-input-dropdown').value.trim();
+    window.joinWithInviteLink_dropdown = async function () {
+        const inviteInput = document.getElementById('invite-link-input-dropdown').value.trim();
 
-        if (!inviteLink) {
+        if (!inviteInput) {
             alert('Введіть посилання для приєднання');
             return;
         }
 
-        try {
-            const token = inviteLink;
-            const roomId = document.getElementById('room-id-input-dropdown').value.trim();
+        let token = inviteInput;
+        let roomId = document.getElementById('room-id-input-dropdown').value.trim();
 
-            if (!roomId) {
-                alert('Спочатку введіть UUID кімнати');
-                return;
+        // Якщо вставили повне посилання, дістаємо параметри з нього
+        if (inviteInput.includes('?')) {
+            try {
+                const urlObj = new URL(inviteInput);
+                token = urlObj.searchParams.get('invite') || inviteInput;
+                roomId = urlObj.searchParams.get('room') || roomId;
+            } catch (e) {
+                console.error("Не вдалося розпарсити URL:", e);
             }
+        }
 
+        if (!roomId) {
+            alert('Не вдалося визначити UUID кімнати. Введіть його в полі вище або скористайтеся прямим переходом за посиланням.');
+            return;
+        }
+
+        try {
             const response = await fetch(`/api/rooms/${roomId}/join-with-link/`, {
                 method: 'POST',
                 headers: {

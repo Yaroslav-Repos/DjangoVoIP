@@ -124,6 +124,27 @@
         height: calc(100vh - 200px);
     }
 
+    
+    @media (max-width: 768px) {
+        .ts-container {
+            flex-direction: column; 
+            height: auto; 
+            overflow-y: visible;
+        }
+
+        .sidebar {
+            width: 100%; 
+            box-sizing: border-box;
+            max-height: 300px; 
+        }
+
+        .chat-section {
+            width: 100%;
+            box-sizing: border-box;
+            height: 500px; 
+        }
+    }
+
     .sidebar {
         width: 280px;
         background: #2f3136;
