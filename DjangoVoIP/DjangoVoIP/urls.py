@@ -7,7 +7,7 @@ from django.urls import path, include, re_path
 from rest_framework.routers import DefaultRouter
 from rooms.views import (
     RoomViewSet, RegisterView, LoginView, LogoutView, 
-    MenuView, RoomDetailView, TurnCredentialsView
+    MenuView, RoomDetailView, TurnCredentialsView, LiveKitTokenView
 )
 
 router = DefaultRouter()
@@ -33,5 +33,9 @@ urlpatterns = [
     re_path(r'^api/rooms/(?P<pk>[0-9a-f\-]+)/leave/$', RoomViewSet.as_view({'post': 'leave'}), name='room-leave'),
     re_path(r'^api/rooms/(?P<pk>[0-9a-f\-]+)/members/$', RoomViewSet.as_view({'get': 'members'}), name='room-members'),
     re_path(r'^api/rooms/(?P<pk>[0-9a-f\-]+)/messages/$', RoomViewSet.as_view({'get': 'messages'}), name='room-messages'),
+
+    re_path(r'^api/rooms/(?P<pk>[0-9a-f\-]+)/livekit-token/$', LiveKitTokenView.as_view(), name='room_livekit_token'),
+
     path('api/turn-credentials/', TurnCredentialsView.as_view(), name='turn_credentials'),
+    
 ]

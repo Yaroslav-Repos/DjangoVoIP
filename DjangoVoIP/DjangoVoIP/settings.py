@@ -16,6 +16,13 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
+#LIVEKIT_URL = "wss://yaroslavtestapp-75ga8j7b.livekit.cloud"
+LIVEKIT_URL = "https://sfu.yaroslavtestapp.pp.ua"
+LIVEKIT_API_KEY = "APIoXqcf2a35e9F"
+LIVEKIT_API_SECRET = "3hqwCqWCgyRzeQxIrwgkXk5hSAi1d5HUzxq2dDMNHwM"
+
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-secret-key-test')
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
@@ -120,6 +127,12 @@ if DEBUG:
             'BACKEND': 'channels.layers.InMemoryChannelLayer'
         }
     }
+    CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'presence-cache-unique-name',
+    }
+}
 else:
     CHANNEL_LAYERS = {
         'default': {
@@ -136,6 +149,9 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 10,
+    'DEFAULT_THROTTLE_RATES': {
+        'livekit_token': '6/minute',
+    }
 }
 
 STATIC_URL = '/static/'

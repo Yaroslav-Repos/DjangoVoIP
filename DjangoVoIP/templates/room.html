@@ -19,104 +19,104 @@
             color: #f2f2f2;
         }
 
-        .room-header-actions {
-            display: flex;
-            align-items: center;
-            gap: 15px;
+    .room-header-actions {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+
+    .room-header a {
+        color: #5865f2;
+        text-decoration: none;
+        font-weight: 500;
+        transition: color 0.2s;
+        padding: 8px 12px;
+        border-radius: 6px;
+    }
+
+        .room-header a:hover {
+            color: #4752c4;
+            background: rgba(88, 101, 242, 0.1);
         }
 
-        .room-header a {
-            color: #5865f2;
-            text-decoration: none;
-            font-weight: 500;
-            transition: color 0.2s;
-            padding: 8px 12px;
-            border-radius: 6px;
+    .settings-dropdown-container {
+        position: relative;
+        overflow: visible;
+    }
+
+    .settings-menu-btn {
+        padding: 8px 12px;
+        background: #5865f2;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 500;
+        transition: background 0.2s;
+        font-size: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 40px;
+        height: 40px;
+    }
+
+        .settings-menu-btn:hover {
+            background: #4752c4;
         }
 
-            .room-header a:hover {
-                color: #4752c4;
-                background: rgba(88, 101, 242, 0.1);
-            }
-
-        .settings-dropdown-container {
-            position: relative;
-            overflow: visible;
+        .settings-menu-btn:active {
+            background: #3c45a5;
         }
 
-        .settings-menu-btn {
-            padding: 8px 12px;
-            background: #5865f2;
-            color: white;
+    .settings-dropdown {
+        position: absolute;
+        top: calc(100% + 8px);
+        right: 0;
+        background: #36393f;
+        border-radius: 8px;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+        z-index: 100;
+        min-width: 220px;
+        overflow: hidden;
+        border: 1px solid #2f3136;
+        display: none;
+    }
+
+        .settings-dropdown.visible {
+            display: block;
+        }
+
+        .settings-dropdown .settings-option {
+            display: block;
+            width: 100%;
+            padding: 12px 15px;
             border: none;
-            border-radius: 6px;
+            background: none;
+            color: #dbdbdb;
+            text-align: left;
             cursor: pointer;
-            font-weight: 500;
+            font-size: 13px;
             transition: background 0.2s;
-            font-size: 16px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-width: 40px;
-            height: 40px;
         }
 
-            .settings-menu-btn:hover {
-                background: #4752c4;
+            .settings-dropdown .settings-option:hover {
+                background: #40444b;
             }
 
-            .settings-menu-btn:active {
-                background: #3c45a5;
+            .settings-dropdown .settings-option.danger {
+                color: #f04747;
             }
 
-        .settings-dropdown {
-            position: absolute;
-            top: calc(100% + 8px);
-            right: 0;
-            background: #36393f;
-            border-radius: 8px;
-            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
-            z-index: 100;
-            min-width: 220px;
-            overflow: hidden;
-            border: 1px solid #2f3136;
-            display: none;
-        }
-
-            .settings-dropdown.visible {
-                display: block;
-            }
-
-            .settings-dropdown .settings-option {
-                display: block;
-                width: 100%;
-                padding: 12px 15px;
-                border: none;
-                background: none;
-                color: #dbdbdb;
-                text-align: left;
-                cursor: pointer;
-                font-size: 13px;
-                transition: background 0.2s;
-            }
-
-                .settings-dropdown .settings-option:hover {
-                    background: #40444b;
+                .settings-dropdown .settings-option.danger:hover {
+                    background: rgba(240, 71, 71, 0.1);
                 }
 
-                .settings-dropdown .settings-option.danger {
-                    color: #f04747;
-                }
-
-                    .settings-dropdown .settings-option.danger:hover {
-                        background: rgba(240, 71, 71, 0.1);
-                    }
-
-            .dropdown-separator {
-                border: none;
-                border-top: 1px solid #2f3136;
-                margin: 0;
-            }
+    .dropdown-separator {
+        border: none;
+        border-top: 1px solid #2f3136;
+        margin: 0;
+    }
 
     .ts-container {
         display: flex;
@@ -124,24 +124,24 @@
         height: calc(100vh - 200px);
     }
 
-    
+
     @media (max-width: 768px) {
         .ts-container {
-            flex-direction: column; 
-            height: auto; 
+            flex-direction: column;
+            height: auto;
             overflow-y: visible;
         }
 
         .sidebar {
-            width: 100%; 
+            width: 100%;
             box-sizing: border-box;
-            max-height: 300px; 
+            max-height: 300px;
         }
 
         .chat-section {
             width: 100%;
             box-sizing: border-box;
-            height: 500px; 
+            height: 500px;
         }
     }
 
@@ -725,13 +725,13 @@
         box-sizing: border-box;
     }
 
-    .modal-content > input:first-of-type {
-        margin-top: 15px;
-    }
+        .modal-content > input:first-of-type {
+            margin-top: 15px;
+        }
 
-    .modal-content > label:first-of-type {
-        margin-top: 15px;
-    }
+        .modal-content > label:first-of-type {
+            margin-top: 15px;
+        }
 
     .modal-content > div {
         margin-left: 15px;
@@ -740,9 +740,9 @@
         box-sizing: border-box;
     }
 
-    .modal-content > div:last-of-type:not(.modal-buttons) {
-        margin-bottom: 15px;
-    }
+        .modal-content > div:last-of-type:not(.modal-buttons) {
+            margin-bottom: 15px;
+        }
 </style>
 
 <script>
@@ -796,7 +796,16 @@
     });
 </script>
 
-<script data-cfasync="false" src="{% static 'js/room.js' %}?v=1.0.2"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js"></script>
+
+<script>
+    window.roomId = "{{ room.id }}";
+    window.currentUserId = "{{ request.user.id }}";
+    window.currentUsername = "{{ request.user.username }}";
+</script>
+
+<script type="module" data-cfasync="false" src="{% static 'js/main.js' %}?v=1.0.4"></script>
 
 {% endblock %}
 

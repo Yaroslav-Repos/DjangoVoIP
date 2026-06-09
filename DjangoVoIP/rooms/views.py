@@ -18,6 +18,16 @@ from .models import Room, RoomMembership, ChatMessage, RoomInviteLink
 from .serializers import RoomSerializer, ChatMessageSerializer
 from .permissions import IsRoomMember, IsRoomAdmin
 
+from django.conf import settings
+
+from rest_framework.throttling import UserRateThrottle
+
+from livekit import api
+
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
+from .utils import kick_from_livekit, delete_livekit_room
+
 class RegisterView(View):
     def get(self, request):
         return render(request, 'register.html', {'form': UserCreationForm()})
@@ -194,6 +204,17 @@ class RoomViewSet(viewsets.ModelViewSet):
         RoomMembership.objects.create(user=self.request.user, room=room, role='admin')
 
     def perform_destroy(self, instance):
+        room_id = instance.id
+
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f'ts_room_{room_id}',
+            {
+                'type': 'room_deleted'
+            }
+        )
+
+        async_to_sync(delete_livekit_room)(room_id)
 
         RoomMembership.objects.filter(room=instance).delete()
         instance.delete()
@@ -247,7 +268,7 @@ class RoomViewSet(viewsets.ModelViewSet):
         #  ПЕРЕВІРКА 1: Токен обов'язковий
         if not invite_token:
             return Response(
-                {"detail": "Токен посилання потрібен."},
+                {"detail": "Потрібен токен посилання."},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -278,7 +299,7 @@ class RoomViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_403_FORBIDDEN
             )
 
-        # ПЕРЕВІРКА 6: Користувач не вже член
+        # ПЕРЕВІРКА 6: Користувач вже член
         existing_membership = room.memberships.filter(user=request.user).first()
         if existing_membership:
             return Response({"status": "already_member"})
@@ -423,14 +444,14 @@ class RoomViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        #  ПЕРЕВІРКА 4: username має разумну довжину
+        #  ПЕРЕВІРКА 4: username має розумну довжину
         if len(username) > 150:
             return Response(
                 {"detail": "username занадто довгий."},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        #  ПЕРЕВІРКА 5: Користувач існує (🛡️ БЕЗПЕКА: однакова відповідь для всіх помилок)
+        #  ПЕРЕВІРКА 5: Користувач існує (однакова відповідь для всіх помилок)
         user = User.objects.filter(username=username).first()
         if not user:
             return Response(
@@ -522,6 +543,20 @@ class RoomViewSet(viewsets.ModelViewSet):
         try:
             membership = RoomMembership.objects.get(user=user, room=room)
             membership.delete()
+
+
+            channel_layer = get_channel_layer()
+
+            async_to_sync(channel_layer.group_send)(
+                f'ts_room_{room.id}',
+                {
+                    'type': 'force_disconnect',
+                    'user_id': user.id
+                }
+            )
+
+            async_to_sync(kick_from_livekit)(room.id, user.id)
+
             return Response({
                 "status": "removed",
                 "username": user.username
@@ -633,6 +668,100 @@ class RoomViewSet(viewsets.ModelViewSet):
             'next': paginator.num_pages > int(page_number),
             'results': serializer.data
         })
+
+
+class LiveKitTokenThrottle(UserRateThrottle):
+    scope = 'livekit_token'  
+
+import logging
+
+logger = logging.getLogger(__name__)
+
+class LiveKitTokenView(APIView):
+
+
+    action = 'retrieve' 
+    
+    permission_classes = [IsAuthenticated] 
+
+    throttle_classes = []
+
+
+    def get(self, request, pk):
+        user = request.user
+
+
+        if not user or not user.is_authenticated:
+            return Response(
+                {"detail": "Дані не були надані (Користувач не автентифікований)."},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+
+
+        throttle = LiveKitTokenThrottle()
+        if not throttle.allow_request(request, self):
+            wait = throttle.wait()
+            return Response(
+                {"detail": f"Забагато запитів. Спробуйте знову через {wait} секунд(и)."},
+                status=status.HTTP_429_TOO_MANY_REQUESTS
+            )
+
+
+        room_obj = get_object_or_404(Room, id=pk)
+
+
+        permission_checker = IsRoomMember()
+        if not permission_checker.has_object_permission(request, self, room_obj):
+            return Response(
+                {"detail": "У вас немає прав для доступу до цієї кімнати (Ви не є її учасником)."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        if not room_obj.is_private:
+            membership, created = RoomMembership.objects.get_or_create(
+                user=user, 
+                room=room_obj,
+                defaults={'role': 'member'}
+            )
+        else:
+            membership = room_obj.memberships.filter(user=user).first()
+
+
+        is_admin = False
+        can_publish = True  
+
+        if membership:
+            if membership.role == 'admin':
+                is_admin = True
+            elif membership.role == 'muted':  #для майбутнього, якщо буде роль muted (?)
+                can_publish = False  
+
+
+        try:
+            grant = api.AccessToken(settings.LIVEKIT_API_KEY, settings.LIVEKIT_API_SECRET) \
+                .with_identity(str(user.id)) \
+                .with_ttl(timedelta(minutes=5))\
+                .with_name(user.username) \
+                .with_grants(api.VideoGrants(
+                    room_join=True,
+                    room=f"room_{room_obj.id}",
+                    can_publish=can_publish,  
+                    can_subscribe=True,   
+                    room_admin=is_admin   
+                ))
+
+            return Response({
+                "token": grant.to_jwt(),
+                "livekit_url": settings.LIVEKIT_URL
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            logger.error(f"Помилка генерації токена LiveKit для користувача {user.id}: {e}")
+            return Response(
+                {"detail": "Внутрішня помилка сервера при ініціалізації медіа-сесії."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
 
 class TurnCredentialsView(APIView):
     permission_classes = [IsAuthenticated]
