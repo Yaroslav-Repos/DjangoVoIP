@@ -1,0 +1,1213 @@
+/* ==========================================================================
+   1. GLOBAL STYLES & RESET
+   ========================================================================== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    background: #1e1e2e;
+    color: #dbdbdb;
+    line-height: 1.5;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+h1, h2, h3, h4 {
+    margin-bottom: 12px;
+}
+
+a {
+    color: #5865f2;
+    text-decoration: none;
+}
+
+    a:hover {
+        text-decoration: underline;
+    }
+
+/* ==========================================================================
+   2. LAYOUT COMPONENTS (HEADER)
+   ========================================================================== */
+header {
+    background: #2f3136;
+    padding: 12px 20px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    position: relative;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+header p {
+    font-size: 14px;
+}
+
+header a {
+    color: #5865f2;
+    text-decoration: none;
+    font-weight: 500;
+    padding: 6px 12px;
+    border-radius: 6px;
+    transition: background 0.2s;
+}
+
+    header a:hover {
+        background: rgba(88, 101, 242, 0.2);
+    }
+
+/* ==========================================================================
+   3. FORMS & INPUTS & BUTTONS
+   ========================================================================== */
+button, .btn {
+    background: #5865f2;
+    color: white;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: background 0.2s;
+}
+
+    button:hover, .btn:hover {
+        background: #4752c4;
+    }
+
+    button:active, .btn:active {
+        background: #3c45a5;
+    }
+
+    button.secondary {
+        background: #40444b;
+        color: #dbdbdb;
+    }
+
+        button.secondary:hover {
+            background: #4e5058;
+        }
+
+    button.danger {
+        background: #f04747;
+    }
+
+        button.danger:hover {
+            background: #d83333;
+        }
+
+input[type="text"],
+input[type="password"],
+input[type="email"],
+textarea {
+    background: #2f3136;
+    border: 1px solid #202225;
+    color: #dbdbdb;
+    padding: 10px 12px;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: border-color 0.2s;
+}
+
+    input[type="text"]:focus,
+    input[type="password"]:focus,
+    input[type="email"]:focus,
+    textarea:focus {
+        outline: none;
+        border-color: #5865f2;
+        box-shadow: 0 0 0 2px rgba(88, 101, 242, 0.2);
+    }
+
+form label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: #b9bbbe;
+}
+
+form input,
+form textarea,
+form select {
+    width: 100%;
+    margin-bottom: 12px;
+}
+
+.form-input {
+    flex: 1;
+    min-width: 150px;
+    padding: 12px 15px;
+    background: #40444b;
+    color: #dbdbdb;
+    border: 1px solid #36393f;
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: inherit;
+}
+
+    .form-input:focus {
+        outline: none;
+        border-color: #5865f2;
+        box-shadow: 0 0 0 2px rgba(88, 101, 242, 0.2);
+    }
+
+    .form-input::placeholder {
+        color: #72767d;
+    }
+
+.btn-secondary {
+    background: #40444b;
+    color: #dbdbdb;
+    padding: 10px 16px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 13px;
+    transition: background 0.2s;
+    white-space: nowrap;
+}
+
+    .btn-secondary:hover {
+        background: #4a4d52;
+    }
+
+.btn-primary {
+    background: #5865f2;
+    color: white;
+    padding: 10px 16px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 13px;
+    transition: background 0.2s;
+    white-space: nowrap;
+}
+
+    .btn-primary:hover {
+        background: #4752c4;
+    }
+
+/* ==========================================================================
+   4. MODALS & ALERTS
+   ========================================================================== */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+}
+
+    .modal.active {
+        display: flex;
+    }
+
+.modal-content {
+    background: #36393f;
+    border-radius: 12px;
+    padding: 20px;
+    max-width: 400px;
+    width: 90%;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.5);
+}
+
+    .modal-content h3 {
+        margin-bottom: 16px;
+        font-size: 18px;
+    }
+
+    .modal-content input {
+        width: 100%;
+        padding: 10px 12px;
+        margin-bottom: 15px;
+        background: #40444b;
+        color: #dbdbdb;
+        border: 1px solid #36393f;
+        border-radius: 6px;
+        font-size: 13px;
+        font-family: inherit;
+        box-sizing: border-box;
+    }
+
+        .modal-content input:focus {
+            outline: none;
+            border-color: #5865f2;
+            box-shadow: 0 0 0 2px rgba(88, 101, 242, 0.2);
+        }
+
+.modal-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 16px;
+}
+
+    .modal-buttons button {
+        flex: 1;
+    }
+
+.alert {
+    background: #f04747;
+    color: white;
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin-bottom: 16px;
+    font-size: 14px;
+}
+
+    .alert.success {
+        background: #43b581;
+    }
+
+/* ==========================================================================
+   5. MENU STYLES (FROM menu.html)
+   ========================================================================== */
+.header-menu-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.menu-button {
+    background: #5865f2;
+    color: white;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: background 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+}
+
+    .menu-button:hover {
+        background: #4752c4;
+    }
+
+    .menu-button:active {
+        background: #3c45a5;
+    }
+
+.menu-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: #36393f;
+    border-radius: 8px;
+    min-width: 280px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    z-index: 1001;
+    margin-top: 8px;
+    display: none;
+    flex-direction: column;
+}
+
+    .menu-dropdown.active {
+        display: flex;
+    }
+
+.menu-dropdown-section {
+    padding: 12px 16px;
+    border-bottom: 1px solid #2c2f33;
+}
+
+    .menu-dropdown-section:last-child {
+        border-bottom: none;
+    }
+
+.menu-dropdown-title {
+    color: #b9bbbe;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 10px;
+}
+
+.menu-dropdown-item {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+    .menu-dropdown-item:last-child {
+        margin-bottom: 0;
+    }
+
+.menu-dropdown input {
+    padding: 8px 12px;
+    background: #40444b;
+    color: #dbdbdb;
+    border: 1px solid #36393f;
+    border-radius: 4px;
+    font-size: 13px;
+    font-family: inherit;
+    box-sizing: border-box;
+}
+
+    .menu-dropdown input:focus {
+        outline: none;
+        border-color: #5865f2;
+        box-shadow: 0 0 0 2px rgba(88, 101, 242, 0.2);
+    }
+
+    .menu-dropdown input::placeholder {
+        color: #72767d;
+    }
+
+.menu-dropdown-label {
+    color: #dbdbdb;
+    font-size: 12px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    user-select: none;
+}
+
+    .menu-dropdown-label input {
+        margin: 0;
+        cursor: pointer;
+    }
+
+.menu-dropdown-btn {
+    padding: 8px 12px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 12px;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.menu-dropdown-btn-primary {
+    background: #5865f2;
+    color: white;
+}
+
+    .menu-dropdown-btn-primary:hover {
+        background: #4752c4;
+    }
+
+.menu-dropdown-btn-success {
+    background: #43b581;
+    color: white;
+}
+
+    .menu-dropdown-btn-success:hover {
+        background: #3a9f6a;
+    }
+
+.menu-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1000;
+}
+
+    .menu-overlay.active {
+        display: block;
+    }
+
+.menu-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.section {
+    background: #2f3136;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+    .section h2 {
+        margin: 20px 0 15px 0;
+        color: #f2f2f2;
+        font-size: 18px;
+        font-weight: 600;
+    }
+
+.room-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 12px;
+}
+
+.room-card {
+    background: #36393f;
+    border-radius: 8px;
+    padding: 15px;
+    transition: background 0.2s;
+    border-left: 4px solid #5865f2;
+}
+
+    .room-card.private {
+        border-left-color: #43b581;
+    }
+
+    .room-card:hover {
+        background: #40444b;
+    }
+
+.room-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+}
+
+.room-card-name {
+    color: #f2f2f2;
+    font-weight: 600;
+    font-size: 14px;
+    flex: 1;
+    word-break: break-word;
+}
+
+.room-badge {
+    background: #5865f2;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    white-space: nowrap;
+    margin-left: 8px;
+}
+
+    .room-badge.private {
+        background: #43b581;
+    }
+
+.room-card a {
+    display: inline-block;
+    color: white;
+    text-decoration: none;
+    padding: 8px 12px;
+    border-radius: 4px;
+    background: #5865f2;
+    font-size: 12px;
+    font-weight: 500;
+    transition: background 0.2s;
+}
+
+    .room-card a:hover {
+        background: #4752c4;
+    }
+
+.empty-state {
+    text-align: center;
+    color: #72767d;
+    padding: 30px 20px;
+    font-size: 13px;
+}
+
+.empty-state-icon {
+    font-size: 32px;
+    margin-bottom: 10px;
+    opacity: 0.5;
+}
+
+/* ==========================================================================
+   6. ROOM STYLES (FROM room.html)
+   ========================================================================== */
+.room-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 15px;
+    background: #2f3136;
+    border-radius: 12px;
+    overflow: visible;
+}
+
+    .room-header h2 {
+        margin: 0;
+        color: #f2f2f2;
+    }
+
+.room-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.room-header a {
+    color: #5865f2;
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.2s;
+    padding: 8px 12px;
+    border-radius: 6px;
+}
+
+    .room-header a:hover {
+        color: #4752c4;
+        background: rgba(88, 101, 242, 0.1);
+    }
+
+.settings-dropdown-container {
+    position: relative;
+    overflow: visible;
+}
+
+.settings-menu-btn {
+    padding: 8px 12px;
+    background: #5865f2;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background 0.2s;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 40px;
+    height: 40px;
+}
+
+    .settings-menu-btn:hover {
+        background: #4752c4;
+    }
+
+    .settings-menu-btn:active {
+        background: #3c45a5;
+    }
+
+.settings-dropdown {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    background: #36393f;
+    border-radius: 8px;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+    z-index: 100;
+    min-width: 220px;
+    overflow: hidden;
+    border: 1px solid #2f3136;
+    display: none;
+}
+
+    .settings-dropdown.visible {
+        display: block;
+    }
+
+    .settings-dropdown .settings-option {
+        display: block;
+        width: 100%;
+        padding: 12px 15px;
+        border: none;
+        background: none;
+        color: #dbdbdb;
+        text-align: left;
+        cursor: pointer;
+        font-size: 13px;
+        transition: background 0.2s;
+    }
+
+        .settings-dropdown .settings-option:hover {
+            background: #40444b;
+        }
+
+        .settings-dropdown .settings-option.danger {
+            color: #f04747;
+        }
+
+            .settings-dropdown .settings-option.danger:hover {
+                background: rgba(240, 71, 71, 0.1);
+            }
+
+.dropdown-separator {
+    border: none;
+    border-top: 1px solid #2f3136;
+    margin: 0;
+}
+
+.ts-container {
+    display: flex;
+    gap: 15px;
+    height: calc(100vh - 200px);
+}
+
+.sidebar {
+    width: 280px;
+    background: #2f3136;
+    border-radius: 12px;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+}
+
+    .sidebar h3 {
+        margin: 0 0 15px 0;
+        color: #f2f2f2;
+        font-size: 14px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+#user-list {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 15px 0;
+    flex: 1;
+    overflow-y: auto;
+}
+
+.user-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px;
+    margin-bottom: 8px;
+    background: #36393f;
+    border-radius: 8px;
+    transition: background 0.2s;
+}
+
+    .user-item:hover {
+        background: #40444b;
+    }
+
+.user-avatar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #5865f2, #7289da);
+    color: white;
+    font-weight: 600;
+    font-size: 16px;
+    flex-shrink: 0;
+    text-transform: uppercase;
+}
+
+.user-item:nth-child(2n) .user-avatar {
+    background: linear-gradient(135deg, #43b581, #5bbe88);
+}
+
+.user-item:nth-child(3n) .user-avatar {
+    background: linear-gradient(135deg, #f04747, #f26a6a);
+}
+
+.user-item:nth-child(4n) .user-avatar {
+    background: linear-gradient(135deg, #faa61a, #fbb538);
+}
+
+.user-item:nth-child(5n) .user-avatar {
+    background: linear-gradient(135deg, #9b59b6, #b565d8);
+}
+
+.user-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.username {
+    color: #f2f2f2;
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+}
+
+.user-status {
+    color: #72767d;
+    font-size: 12px;
+    margin-top: 2px;
+}
+
+    .user-status.muted {
+        color: #f04747;
+    }
+
+.mute-btn-container {
+    display: flex;
+    gap: 8px;
+    margin-top: auto;
+    padding-top: 15px;
+    border-top: 1px solid #36393f;
+}
+
+#mute-btn {
+    flex: 1;
+    padding: 10px 12px;
+    background: #5865f2;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background 0.2s;
+    font-size: 13px;
+}
+
+    #mute-btn:hover {
+        background: #4752c4;
+    }
+
+    #mute-btn:active {
+        background: #3c45a5;
+    }
+
+.admin-menu-btn {
+    flex: 1;
+    padding: 10px 12px;
+    background: #43b581;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background 0.2s;
+    font-size: 13px;
+    position: relative;
+}
+
+    .admin-menu-btn:hover {
+        background: #3a9f6a;
+    }
+
+#admin-panel {
+    position: relative;
+    display: none;
+}
+
+.admin-dropdown {
+    position: absolute;
+    bottom: calc(100% + 10px);
+    right: 0;
+    background: #36393f;
+    border-radius: 8px;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+    z-index: 100;
+    min-width: 200px;
+    overflow: hidden;
+}
+
+    .admin-dropdown.hidden {
+        display: none;
+    }
+
+    .admin-dropdown button {
+        display: block;
+        width: 100%;
+        padding: 12px 15px;
+        border: none;
+        background: none;
+        color: #dbdbdb;
+        text-align: left;
+        cursor: pointer;
+        font-size: 13px;
+        transition: background 0.2s;
+        border-bottom: 1px solid #2f3136;
+    }
+
+        .admin-dropdown button:last-child {
+            border-bottom: none;
+        }
+
+        .admin-dropdown button:hover {
+            background: #40444b;
+        }
+
+        .admin-dropdown button.danger {
+            color: #f04747;
+        }
+
+            .admin-dropdown button.danger:hover {
+                background: rgba(240, 71, 71, 0.1);
+            }
+
+.chat-section {
+    flex: 1;
+    background: #2f3136;
+    border-radius: 12px;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+    .chat-section h3 {
+        margin: 0 0 15px 0;
+        color: #f2f2f2;
+        font-size: 14px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+#chat-box {
+    flex: 1;
+    overflow-y: auto;
+    background: #36393f;
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+    #chat-box p {
+        margin: 0;
+        padding: 8px 10px;
+        background: #40444b;
+        border-radius: 6px;
+        color: #dbdbdb;
+        font-size: 13px;
+        line-height: 1.4;
+        word-wrap: break-word;
+    }
+
+    #chat-box strong {
+        color: #5865f2;
+    }
+
+#chat-input {
+    padding: 12px 15px;
+    background: #40444b;
+    color: #dbdbdb;
+    border: 1px solid #36393f;
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: inherit;
+}
+
+    #chat-input:focus {
+        outline: none;
+        border-color: #5865f2;
+        box-shadow: 0 0 0 2px rgba(88, 101, 242, 0.2);
+    }
+
+    #chat-input::placeholder {
+        color: #72767d;
+    }
+
+.chat-section {
+    display: flex;
+    flex-direction: column;
+    height: 100%; 
+}
+
+#chat-box {
+    flex: 1;
+    overflow-y: auto; /* Вмикає вертикальну прокрутку, коли повідомлень забагато */
+    padding: 12px;
+    margin-bottom: 10px;
+    background: #2f3136; /* Темний фон чату, як у Discord */
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    /* Стилізація тонкого повзунка для сучасних браузерів */
+    scrollbar-width: thin;
+    scrollbar-color: #202225 #2f3136;
+}
+
+    /* Стилізація скролбару для Chrome, Safari, Edge */
+    #chat-box::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    #chat-box::-webkit-scrollbar-track {
+        background: #2f3136;
+    }
+
+    #chat-box::-webkit-scrollbar-thumb {
+        background-color: #202225;
+        border-radius: 3px;
+    }
+
+.modal-close {
+    background: transparent;
+    border: none;
+    color: #b9bbbe;
+    font-size: 24px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s;
+}
+
+    .modal-close:hover {
+        color: #f2f2f2;
+    }
+
+#password-modal input, #invite-modal input, #invite-modal label, #add-member-modal input, #add-member-modal label, #remove-member-modal label, #remove-member-modal select {
+    display: block;
+    width: calc(100% - 30px);
+    padding: 10px 15px;
+    margin: 10px 15px;
+    background: #40444b;
+    color: #dbdbdb;
+    border: 1px solid #36393f;
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: inherit;
+    box-sizing: border-box;
+}
+
+    #password-modal input:focus, #invite-modal input:focus, #add-member-modal input:focus, #remove-member-modal select:focus {
+        outline: none;
+        border-color: #5865f2;
+        box-shadow: 0 0 0 2px rgba(88, 101, 242, 0.2);
+    }
+
+#password-modal label, #invite-modal label, #add-member-modal label, #remove-member-modal label {
+    padding: 10px 15px 5px 15px;
+    margin: 10px 0 5px 0;
+    color: #72767d;
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: block;
+    width: calc(100% - 30px);
+    box-sizing: border-box;
+}
+
+#remove-member-modal select {
+    padding: 8px 12px;
+    width: calc(100% - 30px) !important;
+    margin: 10px 15px !important;
+    box-sizing: border-box !important;
+}
+
+.stream-window-controls {
+    display: flex;
+    gap: 5px;
+}
+
+.stream-window-btn {
+    background: transparent;
+    border: none;
+    color: #b9bbbe;
+    cursor: pointer;
+    padding: 2px 5px;
+    font-size: 14px;
+}
+
+    .stream-window-btn:hover {
+        color: #fff;
+    }
+
+.stream-window-body {
+    background: #000;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.stream-window-video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.win-container {
+    position: absolute;
+    min-width: 320px;
+    min-height: 240px;
+    background: #292b2f;
+    padding: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: move;
+    user-select: none;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.floating-stream-window {
+    position: fixed; /* Вікно залишається на місці при скролі */
+    top: 150px;
+    left: 150px;
+    width: 480px; /* Початкова ширина */
+    height: 320px; /* Початкова висота */
+    min-width: 320px;
+    min-height: 240px;
+    background: #292b2f;
+    border-radius: 8px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+    z-index: 2000; /* Поверх усіх інших елементів, навіть модалок */
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid #36393f;
+}
+
+/* Шапка вікна, за яку можна перетягувати */
+.stream-window-header {
+    background: #202225;
+    padding: 10px 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: move; /* Курсор, що показує можливість перетягування */
+    user-select: none;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 500;
+    border-bottom: 1px solid #2f3136;
+}
+
+/* Стилі для стану "Розгорнуто на весь екран" */
+.floating-stream-window.maximized {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    max-width: 100vw !important;
+    max-height: 100vh !important;
+    border-radius: 0;
+    z-index: 9999; /* Абсолютний пріоритет поверх усього */
+}
+
+    /* Приховуємо куточок зміни розміру, якщо вікно розгорнуто */
+    .floating-stream-window.maximized .stream-window-resize-handle {
+        display: none !important;
+    }
+
+/* Корекція для відео всередині контейнера */
+.floating-stream-window .stream-window-body {
+    flex: 1;
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 0; /* Важливо для коректного resize в flex-блоках */
+}
+
+.floating-stream-window .stream-window-video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+
+/* Контейнер для повідомлення */
+.message-wrapper {
+    position: relative;
+    padding: 4px 8px;
+    margin: 2px 0;
+    border-radius: 4px;
+    transition: background-color 0.15s ease;
+}
+
+    /* Підсвічування рядка при наведенні миші */
+    .message-wrapper:hover {
+        background-color: rgba(255, 255, 255, 0.05); /* Для темної теми. Для світлої міняйте на #f3f4f6 */
+    }
+
+/* Контейнер для кнопок дій (схований за замовчуванням) */
+.message-options {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: none;
+}
+
+/* Показуємо іконку видалення ТІЛЬКИ при наведенні на рядок */
+.message-wrapper:hover .message-options {
+    display: block;
+}
+
+/* Кнопка видалення */
+.delete-msg-btn {
+    background: none;
+    border: none;
+    color: #8e9297;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 13px;
+    transition: color 0.2s, background-color 0.2s;
+}
+
+    .delete-msg-btn:hover {
+        color: #f04747; /* Стає червоним тільки при наведенні на саму іконку */
+        background-color: rgba(240, 71, 71, 0.1);
+    }
+
+
+/* ==========================================================================
+   7. RESPONSIVE DESIGN MEDIA QUERIES
+   ========================================================================== */
+@media (max-width: 768px) {
+    .menu-dropdown {
+        min-width: 250px;
+    }
+
+    .ts-container {
+        flex-direction: column;
+        height: auto;
+        overflow-y: visible;
+    }
+
+    .sidebar {
+        width: 100%;
+        box-sizing: border-box;
+        max-height: 300px;
+    }
+
+    .chat-section {
+        width: 100%;
+        box-sizing: border-box;
+        height: 500px;
+    }
+}

@@ -142,11 +142,12 @@ class SpeakConsumer(AsyncWebsocketConsumer):
             # 5. Санітизація (захист від XSS HTML/JS ін'єкцій)
             safe_text = escape(msg_text)
 
-            await self.save_message(safe_text)
+            message_obj = await self.save_message(safe_text)
             await self.channel_layer.group_send(
                 self.room_group_name,
                 {
                     'type': 'chat_message',
+                    'message_id': message_obj.id,
                     'sender': self.user.username,
                     'message': safe_text
                 }
@@ -171,6 +172,23 @@ class SpeakConsumer(AsyncWebsocketConsumer):
                 }
             )
 
+        elif stream == 'delete_message':
+            message_id = payload.get('message_id')
+            if not message_id:
+                return
+        
+            is_deleted = await self.db_delete_message(message_id)
+    
+            if is_deleted:
+
+                await self.channel_layer.group_send(
+                    self.room_group_name,
+                    {
+                        'type': 'message_deleted',
+                        'message_id': message_id
+                    }
+                )
+
     async def presence_message(self, event):
         await self.send(text_data=json.dumps({'stream': 'presence', 'payload': event}))
 
@@ -189,6 +207,14 @@ class SpeakConsumer(AsyncWebsocketConsumer):
         logger.info(f"Кімнату {self.room_id} видалено. Закриваємо з'єднання для всіх учасників.")
         await self.close(code=4004)
 
+    async def message_deleted(self, event):
+        await self.send(text_data=json.dumps({
+            'stream': 'delete_message',
+            'payload': {
+                'message_id': event['message_id']
+            }
+        }))
+
     @database_sync_to_async
     def get_room(self):
         return Room.objects.filter(id=self.room_id).first()
@@ -205,7 +231,24 @@ class SpeakConsumer(AsyncWebsocketConsumer):
             text=text
         )
 
-
+    @database_sync_to_async
+    def db_delete_message(self, message_id):
+        try:
+            message = ChatMessage.objects.get(id=message_id, room_id=self.room_id)
+        
+            is_admin = RoomMembership.objects.filter(
+                user=self.user, 
+                room_id=self.room_id, 
+                role='admin'
+            ).exists()
+        
+            if message.user == self.user or is_admin:
+                message.delete()
+                return True
+            
+            return False
+        except ChatMessage.DoesNotExist:
+            return False
 
 
     # на майбутнє: можна оптимізувати, щоб не дерти з кешу, перейти на Redis

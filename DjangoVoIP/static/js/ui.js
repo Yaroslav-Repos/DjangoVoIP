@@ -114,17 +114,32 @@ export function initializeEventListeners() {
     }
 
     const chatInput = document.getElementById('chat-input');
+    const sendChatBtn = document.getElementById('send-chat-btn');
+
+    
+    function sendChatMessage() {
+        if (!chatInput) return;
+        const message = chatInput.value.trim();
+        if (message !== '') {
+            if (state.chatSocket && state.chatSocket.readyState === WebSocket.OPEN) {
+                state.chatSocket.send(JSON.stringify({ stream: 'chat', payload: { message: message } }));
+                chatInput.value = '';
+            } else {
+                alert('WebSocket не з\'єднаний!');
+            }
+        }
+    }
+
     if (chatInput) {
         chatInput.addEventListener('keypress', function (e) {
-            if (e.key === 'Enter' && this.value.trim() !== '') {
-                if (state.chatSocket && state.chatSocket.readyState === WebSocket.OPEN) {
-                    state.chatSocket.send(JSON.stringify({ stream: 'chat', payload: { message: this.value } }));
-                    this.value = '';
-                } else {
-                    alert('WebSocket не з\'єднаний!');
-                }
+            if (e.key === 'Enter') {
+                sendChatMessage();
             }
         });
+    }
+
+    if (sendChatBtn) {
+        sendChatBtn.addEventListener('click', sendChatMessage);
     }
 
     document.getElementById('chat-box')?.addEventListener('scroll', function () {

@@ -76,6 +76,13 @@ export function initWebSocket() {
         else if (stream === 'voice_sync') {
             Object.entries(payload).forEach(([userId, s]) => updateUserVoiceUI(userId, s));
         }
+
+        else if (stream === 'delete_message') {
+            const msgElement = document.getElementById(`msg-${payload.message_id}`);
+            if (msgElement) {
+                msgElement.remove();
+            }
+        }
     };
 
     
@@ -120,16 +127,19 @@ export function initWebSocket() {
 
     function handleChatMessage(payload) {
         const chatBox = document.getElementById('chat-box');
-        const p = document.createElement('p');
 
-        const strong = document.createElement('strong');
-        strong.textContent = `${payload.sender}: `; 
+        const wrapper = document.createElement('div');
+        wrapper.className = 'message-wrapper';
+        wrapper.id = `msg-${payload.message_id}`; 
 
-        const msg = document.createTextNode(payload.message); 
+        wrapper.innerHTML = `
+        <strong>${payload.sender}:</strong> ${payload.message}
+        <div class="message-options">
+            <button class="delete-msg-btn" data-id="${payload.message_id}" title="Видалити повідомлення">🗑️</button>
+        </div>
+    `;
 
-        p.appendChild(strong);
-        p.appendChild(msg);
-        chatBox.appendChild(p);
+        chatBox.appendChild(wrapper);
         chatBox.scrollTop = chatBox.scrollHeight;
     }
 
@@ -143,5 +153,21 @@ export function initWebSocket() {
             }
         }
     }
+
+    document.getElementById('chat-box')?.addEventListener('click', (e) => {
+        const deleteBtn = e.target.closest('.delete-msg-btn');
+        if (deleteBtn) {
+            const messageId = deleteBtn.getAttribute('data-id');
+
+            if (messageId && confirm('Ви дійсно хочете видалити це повідомлення?')) {
+                state.chatSocket.send(JSON.stringify({
+                    'stream': 'delete_message',
+                    'payload': {
+                        'message_id': parseInt(messageId)
+                    }
+                }));
+            }
+        }
+    });
 
 }

@@ -510,7 +510,7 @@ class RoomViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        #  ПЕРЕВІРКА 4: username має разумну довжину
+        #  ПЕРЕВІРКА 4: username має розумну довжину
         if len(username) > 150:
             return Response(
                 {"detail": "username занадто довгий."},
@@ -525,10 +525,10 @@ class RoomViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_403_FORBIDDEN
             )
 
-        #  ПЕРЕВІРКА 6: Не дозволяти видаляти створювача кімнати
+        #  ПЕРЕВІРКА 6: Не дозволяти видаляти адміна кімнати
         if user.id == room.created_by_id:
             return Response(
-                {"detail": "Не можна видалити створювача кімнати."},
+                {"detail": "Не можна видалити адміна кімнати."},
                 status=status.HTTP_403_FORBIDDEN
             )
 
@@ -578,7 +578,7 @@ class RoomViewSet(viewsets.ModelViewSet):
         #  ПЕРЕВІРКА 3: Не дозволяти адміну просто покинути кімнату
         if user.id == room.created_by_id:
             return Response(
-                {"detail": "Адміністратор не може просто покинути кімнату. Видаліть кімнату замість цього."},
+                {"detail": "Адміністратор не може покинути кімнату. Видаліть кімнату замість цього."},
                 status=status.HTTP_403_FORBIDDEN
             )
 

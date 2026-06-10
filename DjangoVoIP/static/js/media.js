@@ -22,25 +22,18 @@ export async function connectLiveKit() {
             if (track.kind === LivekitClient.Track.Kind.Audio) {
                 if (publication.source === LivekitClient.Track.Source.ScreenShareAudio) {
                     console.log(`[DEBUG ScreenAudio] Received ScreenShareAudio track from ${participant.identity}`);
-                    // Зберігаємо аудіотрек екрану в стан
                     state.remoteScreenAudioTracks[participant.identity] = track;
 
-                    // Якщо глядач вже відкрив вікно трансляції, додаємо аудіо в ГОЛОВНИЙ документ
-                    const win = state.remoteScreenWindows[participant.identity];
-                    if (win && !win.closed) {
-                        console.log(`[DEBUG ScreenAudio] Window for ${participant.identity} is OPEN. Attaching audio to main document.`);
-                        let audioElem = document.getElementById(`screen-audio-${participant.identity}`);
-                        if (!audioElem) {
-                            audioElem = document.createElement('audio');
-                            audioElem.id = `screen-audio-${participant.identity}`;
-                            audioElem.autoplay = true;
-                            document.body.appendChild(audioElem);
-                            console.log(`[DEBUG ScreenAudio] Created new <audio> element: #screen-audio-${participant.identity}`);
+                    // Прив'язуємо аудіо до відео-плеєра у відкритому вікні
+                    const winContainer = state.remoteScreenWindows[participant.identity];
+                    if (winContainer) {
+                        const videoElem = winContainer.querySelector('.stream-window-video');
+                        if (videoElem) {
+                            track.attach(videoElem);
+                            console.log(`[DEBUG ScreenAudio] Successfully attached ScreenShareAudio to in-app window video element.`);
                         }
-                        track.attach(audioElem);
-                        console.log(`[DEBUG ScreenAudio] Successfully attached ScreenShareAudio to main document.`);
                     } else {
-                        console.log(`[DEBUG ScreenAudio] Window for ${participant.identity} is CLOSED. Track saved in state for later.`);
+                        console.log(`[DEBUG ScreenAudio] Window for ${participant.identity} is not open yet. Track saved in state for later.`);
                     }
                 } else {
                     // Звичайний мікрофон користувача
@@ -58,16 +51,15 @@ export async function connectLiveKit() {
 
             if (track.kind === LivekitClient.Track.Kind.Audio) {
                 if (publication.source === LivekitClient.Track.Source.ScreenShareAudio) {
+                    const winContainer = state.remoteScreenWindows[participant.identity];
+                    if (winContainer) {
+                        const videoElem = winContainer.querySelector('.stream-window-video');
+                        if (videoElem) {
+                            track.detach(videoElem);
+                        }
+                    }
                     delete state.remoteScreenAudioTracks[participant.identity];
                     console.log(`[DEBUG ScreenAudio] Removed ScreenShareAudio track from state for ${participant.identity}`);
-
-                    // Видаляємо елемент з головного вікна
-                    const audioElem = document.getElementById(`screen-audio-${participant.identity}`);
-                    if (audioElem) {
-                        track.detach(audioElem);
-                        audioElem.remove();
-                        console.log(`[DEBUG ScreenAudio] Removed <audio> element #screen-audio-${participant.identity} from main document.`);
-                    }
                 } else {
                     detachRemoteTrack(participant.identity);
                 }
@@ -189,12 +181,11 @@ export function cleanupAudioMonitoring() {
 
     if (state.remoteScreenWindows) {
         for (const userId in state.remoteScreenWindows) {
-            if (state.remoteScreenWindows[userId] && !state.remoteScreenWindows[userId].closed) {
-                state.remoteScreenWindows[userId].onbeforeunload = null;
-                state.remoteScreenWindows[userId].close();
+            if (state.remoteScreenWindows[userId]) {
+                state.remoteScreenWindows[userId].remove();
             }
         }
-        state.remoteScreenWindows = {}; 
+        state.remoteScreenWindows = {};
     }
 
     if (state.livekitRoom) {
@@ -226,7 +217,8 @@ export async function startScreenShare() {
     const quality = qualitySelect ? qualitySelect.value : '1080p';
 
     let constraints = {
-        width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 60, max: 60 } };
+        width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 60, max: 60 }
+    };
     if (quality === '720p') constraints = { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } };
     else if (quality === '480p') constraints = { width: { ideal: 854 }, height: { ideal: 480 }, frameRate: { ideal: 15 } };
 
@@ -350,8 +342,8 @@ export function addRemoteScreenShare(track, userId) {
         icon.innerHTML = '🖥️ Дивитись';
         icon.style.cssText = 'margin-left: auto; background: #43b581; color: white; border: none; border-radius: 4px; padding: 4px 8px; font-size: 11px; cursor: pointer; font-weight: 500; transition: background 0.2s;';
 
-        icon.onmouseover = () => { icon.style.background = (state.remoteScreenWindows[userId] && !state.remoteScreenWindows[userId].closed) ? '#d63c3c' : '#3a9f6a'; };
-        icon.onmouseout = () => { icon.style.background = (state.remoteScreenWindows[userId] && !state.remoteScreenWindows[userId].closed) ? '#f04747' : '#43b581'; };
+        icon.onmouseover = () => { icon.style.background = (state.remoteScreenWindows[userId]) ? '#d63c3c' : '#3a9f6a'; };
+        icon.onmouseout = () => { icon.style.background = (state.remoteScreenWindows[userId]) ? '#f04747' : '#43b581'; };
 
         icon.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -363,20 +355,10 @@ export function addRemoteScreenShare(track, userId) {
 }
 
 export function removeRemoteScreenShare(userId) {
-    if (state.remoteScreenWindows[userId] && !state.remoteScreenWindows[userId].closed) {
-        state.remoteScreenWindows[userId].onbeforeunload = null;
-        state.remoteScreenWindows[userId].close();
-    }
-    delete state.remoteScreenWindows[userId];
+    closeRemoteScreenWindow(userId);
+
     delete state.remoteScreenTracks[userId];
     delete state.remoteScreenAudioTracks[userId];
-
-    // Очищення аудіо елементу головного вікна
-    const audioElem = document.getElementById(`screen-audio-${userId}`);
-    if (audioElem) {
-        audioElem.remove();
-        console.log(`[DEBUG ScreenAudio] Cleanup: removed #screen-audio-${userId}`);
-    }
 
     const userItem = document.getElementById(`user-${userId}`);
     if (userItem) {
@@ -397,81 +379,219 @@ export function updateRemoteScreenIconState(userId, isWatching) {
 }
 
 export function openRemoteScreenWindow(userId) {
-    console.log(`[DEBUG ScreenShare] Toggling viewer window for userId: ${userId}`);
+    console.log(`[DEBUG ScreenShare] Toggling in-app window for userId: ${userId}`);
 
-    if (state.remoteScreenWindows[userId] && !state.remoteScreenWindows[userId].closed) {
-        console.log(`[DEBUG ScreenShare] Window already open, closing it.`);
-        state.remoteScreenWindows[userId].close();
-        delete state.remoteScreenWindows[userId];
-        updateRemoteScreenIconState(userId, false);
+    if (state.remoteScreenWindows && state.remoteScreenWindows[userId]) {
+        closeRemoteScreenWindow(userId);
         return;
     }
 
     const videoTrack = state.remoteScreenTracks[userId];
+    const audioTrack = state.remoteScreenAudioTracks[userId];
     const username = state.connectedUsers[userId] || "Користувач";
+
     if (!videoTrack) {
         console.error(`[DEBUG ScreenShare] No video track found for ${userId}!`);
         return alert("Трансляція більше недоступна");
     }
 
-    console.log(`[DEBUG ScreenShare] Opening new window for stream.`);
-    const win = window.open("", "_blank", "width=800,height=600,scrollbars=no,resizable=yes");
-    if (win) {
-        win.document.title = `Трансляція екрану - ${username}`;
-        win.document.body.style.cssText = "margin: 0; background-color: #000; display: flex; align-items: center; justify-content: center; height: 100vh; overflow: hidden;";
+    const { winContainer, videoElem } = createFloatingWindow(userId, username);
+    document.body.appendChild(winContainer);
 
-        const video = win.document.createElement('video');
-        video.id = 'screen-video';
-        video.autoplay = true;
-        video.playsInline = true;
-        video.controls = false;
-        video.style.cssText = "max-width: 100%; max-height: 100%; object-fit: contain; outline: none;";
-        win.document.body.appendChild(video);
+    console.log(`[DEBUG ScreenShare] Attaching video track to in-app window video element.`);
+    videoTrack.attach(videoElem);
 
-        // 1. Прив'язуємо відео нативно через LiveKit
-        console.log(`[DEBUG ScreenShare] Attaching video track to window element.`);
-        videoTrack.attach(video);
+    // Прив'язуємо аудіопотік екрана до того самого елемента video
+    if (audioTrack) {
+        console.log(`[DEBUG ScreenAudio] Found existing audio track for ${userId}. Attaching to the SAME video element.`);
+        audioTrack.attach(videoElem);
+    } else {
+        console.warn(`[DEBUG ScreenAudio] No audio track found in state for ${userId} yet.`);
+    }
 
-        // 2. Аудіо обробляємо в ГОЛОВНОМУ вікні
-        const audioTrack = state.remoteScreenAudioTracks[userId];
-        if (audioTrack) {
-            console.log(`[DEBUG ScreenAudio] Found existing audio track for ${userId}. Attaching to main document.`);
-            let audioElem = document.getElementById(`screen-audio-${userId}`);
-            if (!audioElem) {
-                audioElem = document.createElement('audio');
-                audioElem.id = `screen-audio-${userId}`;
-                audioElem.autoplay = true;
-                document.body.appendChild(audioElem);
-                console.log(`[DEBUG ScreenAudio] Created new <audio> element: #screen-audio-${userId}`);
-            }
-            audioTrack.attach(audioElem);
-            console.log(`[DEBUG ScreenAudio] Audio track attached successfully.`);
-        } else {
-            console.warn(`[DEBUG ScreenAudio] No audio track found in state for ${userId} at the moment of opening window. It might arrive later.`);
+    if (!state.remoteScreenWindows) state.remoteScreenWindows = {};
+    state.remoteScreenWindows[userId] = winContainer;
+
+    updateRemoteScreenIconState(userId, true);
+}
+
+function closeRemoteScreenWindow(userId) {
+    if (!state.remoteScreenWindows) return;
+
+    const winContainer = state.remoteScreenWindows[userId];
+    if (winContainer) {
+        console.log(`[DEBUG ScreenShare] Closing in-app viewer window for user: ${userId}`);
+        const videoElem = winContainer.querySelector('.stream-window-video');
+
+        if (state.remoteScreenTracks[userId] && videoElem) {
+            state.remoteScreenTracks[userId].detach(videoElem);
+        }
+        if (state.remoteScreenAudioTracks[userId] && videoElem) {
+            state.remoteScreenAudioTracks[userId].detach(videoElem);
         }
 
-        state.remoteScreenWindows[userId] = win;
-        updateRemoteScreenIconState(userId, true);
-
-        win.onbeforeunload = () => {
-            console.log(`[DEBUG ScreenShare] Viewer window closed by user.`);
-            videoTrack.detach(video);
-
-            const audioElem = document.getElementById(`screen-audio-${userId}`);
-            if (audioElem) {
-                if (state.remoteScreenAudioTracks[userId]) {
-                    state.remoteScreenAudioTracks[userId].detach(audioElem);
-                }
-                audioElem.remove();
-                console.log(`[DEBUG ScreenAudio] Cleaned up audio element for ${userId} from main document.`);
-            }
-
-            delete state.remoteScreenWindows[userId];
-            updateRemoteScreenIconState(userId, false);
-        };
-    } else {
-        console.error(`[DEBUG ScreenShare] Browser blocked window.open!`);
+        winContainer.remove();
+        delete state.remoteScreenWindows[userId];
+        updateRemoteScreenIconState(userId, false);
     }
+}
+
+function createFloatingWindow(userId, username) {
+    const container = document.createElement('div');
+    container.className = 'floating-stream-window';
+    container.id = `stream-win-${userId}`;
+
+    // Шапка вікна
+    const header = document.createElement('div');
+    header.className = 'stream-window-header';
+
+    const title = document.createElement('span');
+    title.innerText = `Трансляція: ${username}`;
+
+    const controls = document.createElement('div');
+    controls.className = 'stream-window-controls';
+
+    const maxBtn = document.createElement('button');
+    maxBtn.className = 'stream-window-btn';
+    maxBtn.innerHTML = '🔲';
+    maxBtn.title = 'Розгорнути на всю вкладку';
+
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'stream-window-btn close';
+    closeBtn.innerHTML = '❌';
+    closeBtn.title = 'Закрити';
+
+    controls.appendChild(maxBtn);
+    controls.appendChild(closeBtn);
+    header.appendChild(title);
+    header.appendChild(controls);
+
+    // Тіло вікна
+    const body = document.createElement('div');
+    body.className = 'stream-window-body';
+
+    const video = document.createElement('video');
+    video.className = 'stream-window-video';
+    video.autoplay = true;
+    video.playsInline = true;
+    video.controls = true;
+
+    body.appendChild(video);
+    container.appendChild(header);
+    container.appendChild(body);
+
+    // Повзунок для зміни розміру у правому нижньому кутку
+    const resizeHandle = document.createElement('div');
+    resizeHandle.className = 'stream-window-resize-handle';
+    resizeHandle.style.cssText = 'position: absolute; right: 0; bottom: 0; width: 14px; height: 14px; cursor: nwse-resize; z-index: 100;';
+    resizeHandle.style.backgroundImage = 'linear-gradient(135deg, transparent 30%, #ccc 30%, #ccc 50%, transparent 50%, transparent 70%, #ccc 70%, #ccc 90%, transparent 90%)';
+    container.appendChild(resizeHandle);
+
+    // Обробники подій кнопок керування
+    closeBtn.onclick = () => closeRemoteScreenWindow(userId);
+
+    let isMaximized = false;
+    let preMaxState = { top: '', left: '', width: '', height: '' };
+
+    maxBtn.onclick = () => {
+        if (!isMaximized) {
+            preMaxState = {
+                top: container.style.top, left: container.style.left,
+                width: container.style.width, height: container.style.height
+            };
+            container.classList.add('maximized');
+            maxBtn.innerHTML = '🔳';
+        } else {
+            container.classList.remove('maximized');
+            container.style.top = preMaxState.top;
+            container.style.left = preMaxState.left;
+            container.style.width = preMaxState.width;
+            container.style.height = preMaxState.height;
+            maxBtn.innerHTML = '🔲';
+        }
+        isMaximized = !isMaximized;
+    };
+
+    // Логіка перетягування (Drag-and-Drop) за шапку вікна
+    let isDragging = false;
+    let startX, startY, initialX, initialY;
+
+    header.onmousedown = (e) => {
+        if (e.target.tagName.toLowerCase() === 'button') return;
+        if (container.classList.contains('maximized')) return;
+
+        isDragging = true;
+        startX = e.clientX;
+        startY = e.clientY;
+
+        const rect = container.getBoundingClientRect();
+        initialX = rect.left;
+        initialY = rect.top;
+
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+    };
+
+    function onMouseMove(e) {
+        if (!isDragging) return;
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+
+        container.style.left = `${initialX + dx}px`;
+        container.style.top = `${initialY + dy}px`;
+        container.style.bottom = 'auto';
+        container.style.right = 'auto';
+    }
+
+    function onMouseUp() {
+        isDragging = false;
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+    }
+
+    // Логіка зміни розміру мишкою (Resize) за куток
+    let isResizing = false;
+    let startWidth, startHeight, startMouseX, startMouseY;
+
+    resizeHandle.onmousedown = (e) => {
+        e.preventDefault();
+        e.stopPropagation(); // Запобігає спрацьовуванню drag-and-drop шапки
+        if (container.classList.contains('maximized')) return;
+
+        isResizing = true;
+        startWidth = container.clientWidth;
+        startHeight = container.clientHeight;
+        startMouseX = e.clientX;
+        startMouseY = e.clientY;
+
+        document.addEventListener('mousemove', onMouseMoveResize);
+        document.addEventListener('mouseup', onMouseUpResize);
+    };
+
+    function onMouseMoveResize(e) {
+        if (!isResizing) return;
+        const dw = e.clientX - startMouseX;
+        const dh = e.clientY - startMouseY;
+
+        const newWidth = startWidth + dw;
+        const newHeight = startHeight + dh;
+
+        // Мінімальні ліміти розширення вікна
+        if (newWidth > 320) {
+            container.style.width = `${newWidth}px`;
+        }
+        if (newHeight > 240) {
+            container.style.height = `${newHeight}px`;
+        }
+    }
+
+    function onMouseUpResize() {
+        isResizing = false;
+        document.removeEventListener('mousemove', onMouseMoveResize);
+        document.removeEventListener('mouseup', onMouseUpResize);
+    }
+
+    return { winContainer: container, videoElem: video };
 }
 
 export function initScreenShareListeners() {
@@ -503,18 +623,8 @@ export function initScreenShareListeners() {
     }
 
     window.addEventListener('beforeunload', () => {
-
         if (state.localScreenWindow && !state.localScreenWindow.closed) {
             state.localScreenWindow.close();
         }
-
-        if (state.remoteScreenWindows) {
-            for (const userId in state.remoteScreenWindows) {
-                if (state.remoteScreenWindows[userId] && !state.remoteScreenWindows[userId].closed) {
-                    state.remoteScreenWindows[userId].close();
-                }
-            }
-        }
     });
-
 }
