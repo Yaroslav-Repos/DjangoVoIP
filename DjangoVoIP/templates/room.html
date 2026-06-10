@@ -453,6 +453,10 @@
                 </div>
             </div>
         </div>
+
+        <div style="margin-top: 10px; width: 100%;">
+            <button id="screenshare-btn" style="width: 100%; padding: 10px 12px; background: #5865f2; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; transition: background 0.2s; font-size: 13px;">🖥️ Почати трансляцію</button>
+        </div>
     </div>
 
     <div class="chat-section">
@@ -464,7 +468,6 @@
 
 <div id="remote-audios" style="display:none;"></div>
 
-<!-- User Volume Context Menu -->
 <div id="user-volume-context" class="user-volume-context" style="display: none; position: fixed; background: #36393f; border: 1px solid #2f3136; border-radius: 8px; padding: 12px; min-width: 220px; box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3); z-index: 2000; max-width: calc(100vw - 20px);">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
         <label style="color: #f2f2f2; font-weight: 600; margin: 0; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;" id="context-username">Користувач</label>
@@ -477,7 +480,6 @@
     <button id="mute-user-btn" style="width: 100%; padding: 8px 12px; background: #f04747; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; font-size: 12px; transition: background 0.2s; white-space: nowrap;">🔇</button>
 </div>
 
-<!-- Modals -->
 <div id="password-modal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
@@ -539,6 +541,25 @@
         <div class="modal-buttons">
             <button class="btn-secondary" data-modal="remove-member-modal">Скасувати</button>
             <button id="confirm-remove-member-btn" class="btn-danger">Видалити</button>
+        </div>
+    </div>
+</div>
+
+<div id="screenshare-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>🖥️ Налаштування трансляції екрану</h3>
+            <button class="modal-close" data-modal="screenshare-modal">&times;</button>
+        </div>
+        <label for="screenshare-quality">Якість трансляції:</label>
+        <select id="screenshare-quality" style="display: block; width: calc(100% - 30px); padding: 10px 15px; margin: 10px 15px; background: #40444b; color: #dbdbdb; border: 1px solid #36393f; border-radius: 6px; font-size: 13px; font-family: inherit; box-sizing: border-box;">
+            <option value="480p">480p / 15 fps</option>
+            <option value="720p" selected>720p / 30 fps</option>
+            <option value="1080p">1080p / 60 fps</option>
+        </select>
+        <div class="modal-buttons">
+            <button class="btn-secondary" data-modal="screenshare-modal">Скасувати</button>
+            <button id="confirm-screenshare-btn" class="btn-primary">Транслювати</button>
         </div>
     </div>
 </div>
@@ -805,7 +826,6 @@
     window.currentUsername = "{{ request.user.username }}";
 </script>
 
-<script type="module" data-cfasync="false" src="{% static 'js/main.js' %}?v=1.0.4"></script>
+<script type="module" data-cfasync="false" src="{% static 'js/main.js' %}?v=2.1"></script>
 
 {% endblock %}
-

@@ -104,7 +104,7 @@ class SpeakConsumer(AsyncWebsocketConsumer):
             self.last_message_time = current_time
             self.spam_warnings = max(0, getattr(self, 'spam_warnings', 0) - 1) # Зменшуємо попередження з часом
 
-            # 2. Перевірка доступу (вже є у тебе)
+            # 2. Перевірка доступу 
             if not await self.is_member():
                 await self.close(code=4003)
                 return

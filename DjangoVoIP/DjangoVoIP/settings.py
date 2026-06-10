@@ -17,10 +17,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-#LIVEKIT_URL = "wss://yaroslavtestapp-75ga8j7b.livekit.cloud"
-LIVEKIT_URL = "https://sfu.yaroslavtestapp.pp.ua"
-LIVEKIT_API_KEY = "APIoXqcf2a35e9F"
-LIVEKIT_API_SECRET = "3hqwCqWCgyRzeQxIrwgkXk5hSAi1d5HUzxq2dDMNHwM"
+
+LIVEKIT_URL = os.environ.get('LIVEKIT_URL', 'https://sfu.yaroslavtestapp.pp.ua')
+LIVEKIT_API_KEY = os.environ.get('LIVEKIT_API_KEY')
+LIVEKIT_API_SECRET = os.environ.get('LIVEKIT_API_SECRET')
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent

@@ -17,5 +17,14 @@ export const state = {
     animationFrameId: null,
     monitoringInterval: null,
     audioContextResumeInterval: null,
-    isAdmin: false
+    isAdmin: false,
+
+    isSharingScreen: false,
+    localScreenStream: null,
+    localScreenPublication: null,
+    localScreenAudioPublication: null,
+    localScreenWindow: null,
+    remoteScreenTracks: {},
+    remoteScreenAudioTracks: {},
+    remoteScreenWindows: {}
 };
