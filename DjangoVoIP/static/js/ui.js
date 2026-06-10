@@ -176,23 +176,28 @@ export function initializeEventListeners() {
 
             if (!audioElem) return;
 
-            const currentVolume = state.audioVolumeMap[state.currentContextUserId] || 1.0;
+            const currentVolume = state.audioVolumeMap[state.currentContextUserId] ?? 1.0;
 
-            if (currentVolume === 0) {
-                const previousVolume = state.volumeBeforeMute[state.currentContextUserId] || 1.0;
-                audioElem.volume = previousVolume;
-                state.audioVolumeMap[state.currentContextUserId] = previousVolume;
-                volumeSlider.value = Math.round(previousVolume * 100);
-                volumePercent.textContent = Math.round(previousVolume * 100) + '%';
-                muteBtn.textContent = '🔊';
-                delete state.volumeBeforeMute[state.currentContextUserId];
-            } else {
+            if (currentVolume > 0) {
+                // Мутимо: зберігаємо поточну гучність, щоб знати, куди повернутися
                 state.volumeBeforeMute[state.currentContextUserId] = currentVolume;
                 audioElem.volume = 0;
                 state.audioVolumeMap[state.currentContextUserId] = 0;
                 volumeSlider.value = 0;
                 volumePercent.textContent = '0%';
                 muteBtn.textContent = '🔇';
+            } else {
+                // Розмучуємо: відновлюємо з пам'яті або ставимо 100% (1.0), якщо пам'ять пуста
+                const restoredVolume = state.volumeBeforeMute[state.currentContextUserId] || 1.0;
+
+                audioElem.volume = restoredVolume;
+                state.audioVolumeMap[state.currentContextUserId] = restoredVolume;
+                volumeSlider.value = Math.round(restoredVolume * 100);
+                volumePercent.textContent = Math.round(restoredVolume * 100) + '%';
+                muteBtn.textContent = '🔊';
+
+                // Чистимо пам'ять після розмуту
+                delete state.volumeBeforeMute[state.currentContextUserId];
             }
         });
     }

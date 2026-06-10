@@ -10,10 +10,15 @@ from rooms.views import (
     MenuView, RoomDetailView, TurnCredentialsView, LiveKitTokenView
 )
 
+from django.views.generic import RedirectView
+
 router = DefaultRouter()
 router.register(r'rooms', RoomViewSet, basename='room')
 
 urlpatterns = [
+
+    path('', RedirectView.as_view(url='menu/', permanent=False)), 
+
     path('admin/', admin.site.urls),
 
     path('menu/', MenuView.as_view(), name='menu'),

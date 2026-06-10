@@ -131,6 +131,21 @@
     </div>
 </div>
 
+<div id="user-volume-context" style="display: none; position: absolute; background: #2f3136; z-index: 1000; padding: 12px; border-radius: 8px; border: 1px solid #202225; width: 220px; box-shadow: 0 4px 12px rgba(0,0,0,0.5);">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <span id="context-username" style="font-weight: 600; color: #fff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px;">Користувач</span>
+        <button id="close-context" style="background: none; border: none; color: #b9bbbe; cursor: pointer; font-size: 18px; padding: 0; line-height: 1;">&times;</button>
+    </div>
+    <div style="margin-bottom: 12px;">
+        <div style="display: flex; justify-content: space-between; font-size: 12px; color: #b9bbbe; margin-bottom: 4px;">
+            <span>Гучність</span>
+            <span id="volume-percent">100%</span>
+        </div>
+        <input type="range" id="volume-slider" min="0" max="100" value="100" style="width: 100%; margin: 0; cursor: pointer;">
+    </div>
+    <button id="mute-user-btn" style="width: 100%; padding: 8px; background: #40444b; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 500; transition: background 0.2s;">🔊 Mute</button>
+</div>
+
 <script>
     const roomId = "{{ room.id }}";
     const currentUserId = {{ request.user.id }};
@@ -189,6 +204,6 @@
     window.currentUsername = "{{ request.user.username }}";
 </script>
 
-<script type="module" data-cfasync="false" src="{% static 'js/main.js' %}?v=1.1.2"></script>
+<script type="module" data-cfasync="false" src="{% static 'js/main.js' %}?v=1.1.5"></script>
 
 {% endblock %}
