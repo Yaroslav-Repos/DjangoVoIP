@@ -15,7 +15,6 @@ export function initWebSocket() {
         console.error('WebSocket error:', error);
         updateMyConnectionStatus(connectionStates.ERROR, 'Помилка з\'єднання');
         showLocalToast('Помилка з\'єднання WebSocket!', 'error');
-        alert('Помилка з\'єднання WebSocket!');
     };
 
     state.chatSocket.onclose = () => {
@@ -66,42 +65,83 @@ export function initWebSocket() {
         const { stream, payload } = data;
 
         if (stream === 'presence') {
-            const userList = document.getElementById('user-list');
-            if (payload.action === 'join') {
-                if (!document.getElementById(`user-${payload.user_id}`)) {
-                    state.connectedUsers[payload.user_id] = payload.username;
-                    const initials = payload.username.substring(0, 1).toUpperCase();
-                    userList.innerHTML += `
-                        <li class="user-item" id="user-${payload.user_id}">
-                            <div class="user-avatar">${initials}</div>
-                            <div class="user-info">
-                                <span class="username">${payload.username}</span>
-                                <span class="user-status">Онлайн</span>
-                            </div>
-                        </li>
-                    `;
-                }
-            } else if (payload.action === 'leave') {
-                const li = document.getElementById(`user-${payload.user_id}`);
-                if (li) li.remove();
-                delete state.connectedUsers[payload.user_id];
-                detachRemoteTrack(payload.user_id);
-            }
+            handlePresence(payload);
         }
         else if (stream === 'chat') {
-            const chatBox = document.getElementById('chat-box');
-            chatBox.innerHTML += `<p><strong>${payload.sender}:</strong> ${payload.message}</p>`;
-            chatBox.scrollTop = chatBox.scrollHeight;
+            handleChatMessage(payload);
         }
         else if (stream === 'voice') {
-            const userItem = document.getElementById(`user-${payload.user_id}`);
-            if (userItem) {
-                const statusSpan = userItem.querySelector('.user-status');
-                if (statusSpan) {
-                    statusSpan.textContent = payload.state.isMuted ? 'Мікрофон вимкнено' : 'Онлайн';
-                    statusSpan.classList.toggle('muted', payload.state.isMuted);
-                }
-            }
+            updateUserVoiceUI(payload.user_id, payload.state);
+        }
+        else if (stream === 'voice_sync') {
+            Object.entries(payload).forEach(([userId, s]) => updateUserVoiceUI(userId, s));
         }
     };
+
+    
+    function handlePresence(payload) {
+        const userList = document.getElementById('user-list');
+        if (payload.action === 'join') {
+            if (!document.getElementById(`user-${payload.user_id}`)) {
+                state.connectedUsers[payload.user_id] = payload.username;
+
+                const li = document.createElement('li');
+                li.className = 'user-item';
+                li.id = `user-${payload.user_id}`;
+
+                const avatar = document.createElement('div');
+                avatar.className = 'user-avatar';
+                avatar.textContent = payload.username.substring(0, 1).toUpperCase();
+
+                const info = document.createElement('div');
+                info.className = 'user-info';
+
+                const name = document.createElement('span');
+                name.className = 'username';
+                name.textContent = payload.username; 
+
+                const status = document.createElement('span');
+                status.className = 'user-status';
+                status.textContent = 'Онлайн';
+
+                info.appendChild(name);
+                info.appendChild(status);
+                li.appendChild(avatar);
+                li.appendChild(info);
+                userList.appendChild(li);
+            }
+        } else if (payload.action === 'leave') {
+            const li = document.getElementById(`user-${payload.user_id}`);
+            if (li) li.remove();
+            delete state.connectedUsers[payload.user_id];
+            detachRemoteTrack(payload.user_id);
+        }
+    }
+
+    function handleChatMessage(payload) {
+        const chatBox = document.getElementById('chat-box');
+        const p = document.createElement('p');
+
+        const strong = document.createElement('strong');
+        strong.textContent = `${payload.sender}: `; 
+
+        const msg = document.createTextNode(payload.message); 
+
+        p.appendChild(strong);
+        p.appendChild(msg);
+        chatBox.appendChild(p);
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function updateUserVoiceUI(userId, state) {
+        const userItem = document.getElementById(`user-${userId}`);
+        if (userItem) {
+            const statusSpan = userItem.querySelector('.user-status');
+            if (statusSpan) {
+                statusSpan.textContent = state.isMuted ? 'Мікрофон вимкнено' : 'Онлайн';
+                statusSpan.classList.toggle('muted', state.isMuted);
+            }
+        }
+    }
+
 }

@@ -1,4 +1,3 @@
-alert("JS почав працювати!");
 
 import { initWebSocket } from './ws.js';
 import { initializeEventListeners } from './ui.js';

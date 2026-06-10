@@ -11,7 +11,10 @@ export async function connectLiveKit() {
         const data = await res.json();
         const { token, livekit_url } = data;
 
-        state.livekitRoom = new LivekitClient.Room();
+        state.livekitRoom = new LivekitClient.Room({
+            adaptiveStream: true,
+            dynacast: true
+        });
 
         state.livekitRoom.on(LivekitClient.RoomEvent.TrackSubscribed, (track, publication, participant) => {
             console.log(`[DEBUG LiveKit] TrackSubscribed: kind=${track.kind}, source=${publication.source}, participant=${participant.identity}`);
@@ -180,6 +183,20 @@ export function cleanupAudioMonitoring() {
     if (state.monitoringInterval) clearInterval(state.monitoringInterval);
     if (state.audioContextResumeInterval) clearInterval(state.audioContextResumeInterval);
 
+    if (state.isSharingScreen) {
+        stopScreenShare();
+    }
+
+    if (state.remoteScreenWindows) {
+        for (const userId in state.remoteScreenWindows) {
+            if (state.remoteScreenWindows[userId] && !state.remoteScreenWindows[userId].closed) {
+                state.remoteScreenWindows[userId].onbeforeunload = null;
+                state.remoteScreenWindows[userId].close();
+            }
+        }
+        state.remoteScreenWindows = {}; 
+    }
+
     if (state.livekitRoom) {
         state.livekitRoom.disconnect();
         state.livekitRoom = null;
@@ -208,7 +225,8 @@ export async function startScreenShare() {
     const qualitySelect = document.getElementById('screenshare-quality');
     const quality = qualitySelect ? qualitySelect.value : '1080p';
 
-    let constraints = { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 60 } };
+    let constraints = {
+        width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 60, max: 60 } };
     if (quality === '720p') constraints = { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } };
     else if (quality === '480p') constraints = { width: { ideal: 854 }, height: { ideal: 480 }, frameRate: { ideal: 15 } };
 
@@ -216,7 +234,7 @@ export async function startScreenShare() {
         console.log(`[DEBUG ScreenShare] Requesting getDisplayMedia...`);
         state.localScreenStream = await navigator.mediaDevices.getDisplayMedia({
             video: constraints,
-            audio: { suppressLocalAudioPlayback: true } // Просимо системне аудіо
+            audio: { suppressLocalAudioPlayback: false }
         });
 
         const videoTracksCount = state.localScreenStream.getVideoTracks().length;
@@ -483,4 +501,20 @@ export function initScreenShareListeners() {
             startScreenShare();
         });
     }
+
+    window.addEventListener('beforeunload', () => {
+
+        if (state.localScreenWindow && !state.localScreenWindow.closed) {
+            state.localScreenWindow.close();
+        }
+
+        if (state.remoteScreenWindows) {
+            for (const userId in state.remoteScreenWindows) {
+                if (state.remoteScreenWindows[userId] && !state.remoteScreenWindows[userId].closed) {
+                    state.remoteScreenWindows[userId].close();
+                }
+            }
+        }
+    });
+
 }

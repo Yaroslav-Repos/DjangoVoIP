@@ -69,6 +69,13 @@ class SpeakConsumer(AsyncWebsocketConsumer):
         self.last_message_time = 0
         self.spam_warnings = 0
 
+        all_voice_states = await self._get_all_voice_states()
+        
+        await self.send(text_data=json.dumps({
+            'stream': 'voice_sync',
+            'payload': all_voice_states
+        }))
+
 
     async def disconnect(self, close_code):
         if hasattr(self, 'room_group_name'):
@@ -153,6 +160,8 @@ class SpeakConsumer(AsyncWebsocketConsumer):
             # Гарантуємо, що статус міняється ТІЛЬКИ для того, хто відправив запит
             safe_payload = {'isMuted': bool(payload['isMuted'])}
         
+            await self._update_voice_state(self.user.id, safe_payload)
+
             await self.channel_layer.group_send(
                 self.room_group_name,
                 {
@@ -221,13 +230,13 @@ class SpeakConsumer(AsyncWebsocketConsumer):
             await cache.adelete(lock_key)  
 
     async def _remove_user_from_presence(self):
-
         lock_key = f"lock_presence_{self.room_id}"
         
         while not await cache.aadd(lock_key, "locked", timeout=10):
             await asyncio.sleep(0.02)
             
         try:
+
             active_users = await cache.aget(self.active_users_key, default={})
             active_users.pop(str(self.user.id), None)
             
@@ -235,5 +244,29 @@ class SpeakConsumer(AsyncWebsocketConsumer):
                 await cache.aset(self.active_users_key, active_users, timeout=86400)
             else:
                 await cache.adelete(self.active_users_key)
+
+
+            voice_key = f"voice_states_{self.room_id}"
+            states = await cache.aget(voice_key, default={})
+            if str(self.user.id) in states:
+                del states[str(self.user.id)]
+                await cache.aset(voice_key, states, timeout=86400)
+
         finally:
             await cache.adelete(lock_key)
+
+    async def _update_voice_state(self, user_id, state):
+        voice_key = f"voice_states_{self.room_id}"
+        lock_key = f"lock_voice_{self.room_id}"
+
+        while not await cache.aadd(lock_key, "locked", timeout=5):
+            await asyncio.sleep(0.01)
+        try:
+            states = await cache.aget(voice_key, default={})
+            states[str(user_id)] = state
+            await cache.aset(voice_key, states, timeout=86400)
+        finally:
+            await cache.adelete(lock_key)
+
+    async def _get_all_voice_states(self):
+        return await cache.aget(f"voice_states_{self.room_id}", default={})
