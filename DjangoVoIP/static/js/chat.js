@@ -15,13 +15,17 @@ export async function loadChatHistory() {
 
         if (messages.length > 0) {
             messages.reverse().forEach(msg => {
-                chatBox.innerHTML += `
+
+                const canDelete = (msg.user.username === window.currentUsername) || state.isAdmin;
+
+                const msgHtml = `
             <div class="message-wrapper" id="msg-${msg.id}">
                 <strong>${msg.user.username}:</strong> ${msg.text}
                 <div class="message-options">
-                    <button class="delete-msg-btn" data-id="${msg.id}" title="Видалити повідомлення">🗑️</button>
+                    ${canDelete ? `<button class="delete-msg-btn" data-id="${msg.id}" title="Видалити повідомлення">🗑️</button>` : ''}
                 </div>
             </div>`;
+                chatBox.innerHTML += msgHtml;
             });
             chatBox.scrollTop = chatBox.scrollHeight;
         }
@@ -39,15 +43,19 @@ export async function loadMoreMessages() {
         if (messages.length > 0) {
             const scrollHeightBefore = chatBox.scrollHeight;
             messages.reverse().forEach(msg => {
+
+                const canDelete = (msg.user.username === window.currentUsername) || state.isAdmin;
+
                 const newMsg = `
         <div class="message-wrapper" id="msg-${msg.id}">
             <strong>${msg.user.username}:</strong> ${msg.text}
             <div class="message-options">
-                <button class="delete-msg-btn" data-id="${msg.id}" title="Видалити повідомлення">🗑️</button>
+                ${canDelete ? `<button class="delete-msg-btn" data-id="${msg.id}" title="Видалити повідомлення">🗑️</button>` : ''}
             </div>
         </div>`;
                 chatBox.insertAdjacentHTML('afterbegin', newMsg);
             });
+
             const scrollHeightAfter = chatBox.scrollHeight;
             chatBox.scrollTop = scrollHeightAfter - scrollHeightBefore;
         }

@@ -130,12 +130,14 @@ export function initWebSocket() {
 
         const wrapper = document.createElement('div');
         wrapper.className = 'message-wrapper';
-        wrapper.id = `msg-${payload.message_id}`; 
+        wrapper.id = `msg-${payload.message_id}`;
+
+        const canDelete = (payload.sender === window.currentUsername) || state.isAdmin;
 
         wrapper.innerHTML = `
         <strong>${payload.sender}:</strong> ${payload.message}
         <div class="message-options">
-            <button class="delete-msg-btn" data-id="${payload.message_id}" title="Видалити повідомлення">🗑️</button>
+            ${canDelete ? `<button class="delete-msg-btn" data-id="${payload.message_id}" title="Видалити повідомлення">🗑️</button>` : ''}
         </div>
     `;
 
