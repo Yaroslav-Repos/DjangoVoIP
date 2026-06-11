@@ -116,6 +116,10 @@ export function initializeEventListeners() {
     const chatInput = document.getElementById('chat-input');
     const sendChatBtn = document.getElementById('send-chat-btn');
 
+    chatInput.addEventListener('input', function () {
+        this.style.height = 'auto'; 
+        this.style.height = (this.scrollHeight) + 'px'; 
+    });
     
     function sendChatMessage() {
         if (!chatInput) return;

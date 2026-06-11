@@ -104,3 +104,13 @@ export function getCookie(name) {
     }
     return cookieValue;
 }
+
+export const formatDate = (dateInput) => {
+    const d = new Date(dateInput);
+
+    if (isNaN(d.getTime())) return '';
+
+    return d.toLocaleDateString([], { day: '2-digit', month: '2-digit', year: '2-digit' }) +
+        ' ' +
+        d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+};

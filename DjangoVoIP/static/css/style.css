@@ -908,6 +908,7 @@ form select {
     }
 
 #chat-input {
+    /* Ваші поточні стилі */
     padding: 12px 15px;
     background: #40444b;
     color: #dbdbdb;
@@ -915,6 +916,17 @@ form select {
     border-radius: 6px;
     font-size: 13px;
     font-family: inherit;
+    width: 100%;
+    min-height: 40px;
+    max-height: 150px;
+    resize: none;
+    box-sizing: border-box;
+
+    display: block; /* Дозволяє керувати розмірами як у блоку */
+    overflow-y: auto; /* Дозволяє скрол, якщо перевищено max-height */
+    white-space: pre-wrap; /* ПРИМУСОВЕ перенесення рядків */
+    word-wrap: break-word; /* Розрив довгих слів */
+    word-break: break-all; /* ГАРАНТІЯ розриву для будь-якого тексту */
 }
 
     #chat-input:focus {
@@ -938,7 +950,7 @@ form select {
     overflow-y: auto; /* Вмикає вертикальну прокрутку, коли повідомлень забагато */
     padding: 12px;
     margin-bottom: 10px;
-    background: #2f3136; /* Темний фон чату, як у Discord */
+    background: #2f3136; 
     border-radius: 8px;
     display: flex;
     flex-direction: column;
@@ -1138,6 +1150,16 @@ form select {
     object-fit: contain;
 }
 
+.message-wrapper {
+    /* Дозволяє розбивати слова, що не вміщаються в рядок */
+    word-wrap: break-word;
+    /* Сучасний варіант для розриву слів */
+    overflow-wrap: break-word;
+    /* Гарантує, що контент не вийде за межі контейнера */
+    word-break: break-word;
+    /* Запобігає розтягуванню контейнера */
+    max-width: 100%;
+}
 
 /* Контейнер для повідомлення */
 .message-wrapper {

@@ -1,8 +1,9 @@
 
 import { state } from './state.js';
-import { connectionStates, updateMyConnectionStatus, showLocalToast } from './utils.js';
+import { connectionStates, updateMyConnectionStatus, showLocalToast, formatDate } from './utils.js';
 import { initAudio, connectLiveKit, detachRemoteTrack } from './media.js';
 import { loadChatHistory } from './chat.js';
+
 
 export function initWebSocket() {
     const wsProtocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
@@ -29,6 +30,9 @@ export function initWebSocket() {
         showLocalToast('Підключення до серверу...', 'info');
 
         try {
+
+            await loadChatHistory();
+
             updateMyConnectionStatus(connectionStates.CHECKING_MICROPHONE, 'Перевірка мікрофона...');
             showLocalToast('Перевірка мікрофона...', 'info');
             await initAudio();
@@ -37,7 +41,6 @@ export function initWebSocket() {
             showLocalToast('Встановлення медіа-з\'єднання...', 'info');
             await connectLiveKit();
 
-            await loadChatHistory();
 
             updateMyConnectionStatus(connectionStates.CONNECTED, 'Готово');
             showLocalToast('Готово до спілкування! ✅', 'success');
@@ -134,12 +137,14 @@ export function initWebSocket() {
 
         const canDelete = (payload.sender === window.currentUsername) || state.isAdmin;
 
+        const timeStr = formatDate(new Date());
+
         wrapper.innerHTML = `
-        <strong>${payload.sender}:</strong> ${payload.message}
-        <div class="message-options">
-            ${canDelete ? `<button class="delete-msg-btn" data-id="${payload.message_id}" title="Видалити повідомлення">🗑️</button>` : ''}
-        </div>
-    `;
+    <small>${timeStr}</small> <strong>${payload.sender}:</strong> ${payload.message}
+    <div class="message-options">
+        ${canDelete ? `<button class="delete-msg-btn" data-id="${payload.message_id}" title="Видалити повідомлення">🗑️</button>` : ''}
+    </div>
+`;
 
         chatBox.appendChild(wrapper);
         chatBox.scrollTop = chatBox.scrollHeight;

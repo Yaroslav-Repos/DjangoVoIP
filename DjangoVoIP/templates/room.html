@@ -59,151 +59,152 @@
         <h3>Чат кімнати</h3>
         <div id="chat-box"></div>
         <div style="display: flex; gap: 10px;">
-            <input type="text" id="chat-input" placeholder="Напишіть повідомлення..." style="flex: 1; margin: 0;">
+            <!-- <input type="text" id="chat-input" placeholder="Напишіть повідомлення..." style="flex: 1; margin: 0;"> -->
+            <textarea id="chat-input" placeholder="Напишіть повідомлення..." style="flex: 1; margin: 0;"></textarea>
             <button id="send-chat-btn">Надіслати</button>
         </div>
-    </div>
-</div>
-
-<div id="password-modal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3>🔑 Змінити пароль</h3>
-            <button class="modal-close" data-modal="password-modal">&times;</button>
-        </div>
-        <input type="password" id="new-password-input" placeholder="Новий пароль">
-        <div class="modal-buttons">
-            <button class="btn-secondary" data-modal="password-modal">Скасувати</button>
-            <button id="confirm-password-btn" class="btn-primary">Підтвердити</button>
         </div>
     </div>
-</div>
 
-<div id="invite-modal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3>🔗 Посилання приєднання</h3>
-            <button class="modal-close" data-modal="invite-modal">&times;</button>
-        </div>
-        <label for="expires-hours">Дійсне (годин):</label>
-        <input type="number" id="expires-hours" value="24" min="1">
-        <button id="generate-link-btn" class="btn-primary">Згенерувати</button>
-        <div id="invite-result" style="display:none; margin-top: 15px; padding: 12px; background: #36393f; border-radius: 6px;">
-            <p style="margin: 0 0 10px 0; color: #72767d; font-size: 12px;">Посилання:</p>
-            <p id="invite-link-text" style="margin: 0; color: #5865f2; word-break: break-all; font-size: 12px;"></p>
-            <button id="copy-invite-btn" class="btn-primary" style="margin-top: 10px;">Копіювати</button>
-        </div>
-        <div class="modal-buttons" style="margin-top: 15px;">
-            <button class="btn-secondary" data-modal="invite-modal">Скасувати</button>
+    <div id="password-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>🔑 Змінити пароль</h3>
+                <button class="modal-close" data-modal="password-modal">&times;</button>
+            </div>
+            <input type="password" id="new-password-input" placeholder="Новий пароль">
+            <div class="modal-buttons">
+                <button class="btn-secondary" data-modal="password-modal">Скасувати</button>
+                <button id="confirm-password-btn" class="btn-primary">Підтвердити</button>
+            </div>
         </div>
     </div>
-</div>
 
-<div id="add-member-modal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3>➕ Додати користувача в кімнату</h3>
-            <button class="modal-close" data-modal="add-member-modal">&times;</button>
-        </div>
-        <input type="text" id="username-input" placeholder="Введіть нікнейм користувача">
-        <div class="modal-buttons">
-            <button class="btn-secondary" data-modal="add-member-modal">Скасувати</button>
-            <button id="confirm-add-member-btn" class="btn-primary">Додати</button>
+    <div id="invite-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>🔗 Посилання приєднання</h3>
+                <button class="modal-close" data-modal="invite-modal">&times;</button>
+            </div>
+            <label for="expires-hours">Дійсне (годин):</label>
+            <input type="number" id="expires-hours" value="24" min="1">
+            <button id="generate-link-btn" class="btn-primary">Згенерувати</button>
+            <div id="invite-result" style="display:none; margin-top: 15px; padding: 12px; background: #36393f; border-radius: 6px;">
+                <p style="margin: 0 0 10px 0; color: #72767d; font-size: 12px;">Посилання:</p>
+                <p id="invite-link-text" style="margin: 0; color: #5865f2; word-break: break-all; font-size: 12px;"></p>
+                <button id="copy-invite-btn" class="btn-primary" style="margin-top: 10px;">Копіювати</button>
+            </div>
+            <div class="modal-buttons" style="margin-top: 15px;">
+                <button class="btn-secondary" data-modal="invite-modal">Скасувати</button>
+            </div>
         </div>
     </div>
-</div>
 
-<div id="remove-member-modal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3>➖ Видалити користувача з кімнати</h3>
-            <button class="modal-close" data-modal="remove-member-modal">&times;</button>
-        </div>
-        <div style="margin-bottom: 15px;">
-            <select id="remove-username-input" style="width: 100%; padding: 10px; background: #2f3136; color: #fff; border: 1px solid #202225; border-radius: 4px;">
-                <option value="">-- Виберіть користувача --</option>
-            </select>
-        </div>
-        <div class="modal-buttons">
-            <button class="btn-secondary" data-modal="remove-member-modal">Скасувати</button>
-            <button id="confirm-remove-member-btn" class="btn-primary danger">Видалити</button>
+    <div id="add-member-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>➕ Додати користувача в кімнату</h3>
+                <button class="modal-close" data-modal="add-member-modal">&times;</button>
+            </div>
+            <input type="text" id="username-input" placeholder="Введіть нікнейм користувача">
+            <div class="modal-buttons">
+                <button class="btn-secondary" data-modal="add-member-modal">Скасувати</button>
+                <button id="confirm-add-member-btn" class="btn-primary">Додати</button>
+            </div>
         </div>
     </div>
-</div>
 
-<div id="user-volume-context" style="display: none; position: absolute; background: #2f3136; z-index: 1000; padding: 12px; border-radius: 8px; border: 1px solid #202225; width: 220px; box-shadow: 0 4px 12px rgba(0,0,0,0.5);">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-        <span id="context-username" style="font-weight: 600; color: #fff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px;">Користувач</span>
-        <button id="close-context" style="background: none; border: none; color: #b9bbbe; cursor: pointer; font-size: 18px; padding: 0; line-height: 1;">&times;</button>
-    </div>
-    <div style="margin-bottom: 12px;">
-        <div style="display: flex; justify-content: space-between; font-size: 12px; color: #b9bbbe; margin-bottom: 4px;">
-            <span>Гучність</span>
-            <span id="volume-percent">100%</span>
+    <div id="remove-member-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>➖ Видалити користувача з кімнати</h3>
+                <button class="modal-close" data-modal="remove-member-modal">&times;</button>
+            </div>
+            <div style="margin-bottom: 15px;">
+                <select id="remove-username-input" style="width: 100%; padding: 10px; background: #2f3136; color: #fff; border: 1px solid #202225; border-radius: 4px;">
+                    <option value="">-- Виберіть користувача --</option>
+                </select>
+            </div>
+            <div class="modal-buttons">
+                <button class="btn-secondary" data-modal="remove-member-modal">Скасувати</button>
+                <button id="confirm-remove-member-btn" class="btn-primary danger">Видалити</button>
+            </div>
         </div>
-        <input type="range" id="volume-slider" min="0" max="100" value="100" style="width: 100%; margin: 0; cursor: pointer;">
     </div>
-    <button id="mute-user-btn" style="width: 100%; padding: 8px; background: #40444b; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 500; transition: background 0.2s;">🔊 Mute</button>
-</div>
 
-<script>
-    const roomId = "{{ room.id }}";
-    const currentUserId = {{ request.user.id }};
-    const currentUsername = "{{ request.user.username }}";
-    const isPrivate = {{ room.is_private|lower }};
-    let isAdmin = false;
-    let connectedUsers = {};
+    <div id="user-volume-context" style="display: none; position: absolute; background: #2f3136; z-index: 1000; padding: 12px; border-radius: 8px; border: 1px solid #202225; width: 220px; box-shadow: 0 4px 12px rgba(0,0,0,0.5);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <span id="context-username" style="font-weight: 600; color: #fff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px;">Користувач</span>
+            <button id="close-context" style="background: none; border: none; color: #b9bbbe; cursor: pointer; font-size: 18px; padding: 0; line-height: 1;">&times;</button>
+        </div>
+        <div style="margin-bottom: 12px;">
+            <div style="display: flex; justify-content: space-between; font-size: 12px; color: #b9bbbe; margin-bottom: 4px;">
+                <span>Гучність</span>
+                <span id="volume-percent">100%</span>
+            </div>
+            <input type="range" id="volume-slider" min="0" max="100" value="100" style="width: 100%; margin: 0; cursor: pointer;">
+        </div>
+        <button id="mute-user-btn" style="width: 100%; padding: 8px; background: #40444b; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 500; transition: background 0.2s;">🔊 Mute</button>
+    </div>
 
-    // Modal management за допомогою делегування подій для нових вікон
-    document.querySelectorAll('.modal-close, [data-modal]').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const modalId = btn.dataset.modal || btn.closest('.modal').id;
-            document.getElementById(modalId).classList.remove('active');
+    <script>
+        const roomId = "{{ room.id }}";
+        const currentUserId = {{ request.user.id }};
+        const currentUsername = "{{ request.user.username }}";
+        const isPrivate = {{ room.is_private|lower }};
+        let isAdmin = false;
+        let connectedUsers = {};
+
+        // Modal management за допомогою делегування подій для нових вікон
+        document.querySelectorAll('.modal-close, [data-modal]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const modalId = btn.dataset.modal || btn.closest('.modal').id;
+                document.getElementById(modalId).classList.remove('active');
+            });
         });
-    });
 
-    document.querySelectorAll('.modal').forEach(modal => {
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                modal.classList.remove('active');
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.classList.remove('active');
+                }
+            });
+        });
+
+
+        window.openModal = function(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) modal.classList.add('active');
+        };
+
+        window.closeModal = function(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) modal.classList.remove('active');
+        };
+
+        // Admin dropdown toggle
+        document.querySelector('.admin-menu-btn')?.addEventListener('click', (e) => {
+            const dropdown = document.getElementById('admin-dropdown-menu');
+            dropdown?.classList.toggle('hidden');
+        });
+
+        document.addEventListener('click', (e) => {
+            const dropdown = document.getElementById('admin-dropdown-menu');
+            const adminPanel = document.getElementById('admin-panel');
+            if (dropdown && adminPanel && !adminPanel.contains(e.target)) {
+                dropdown.classList.add('hidden');
             }
         });
-    });
+    </script>
 
-  
-    window.openModal = function(modalId) {
-        const modal = document.getElementById(modalId);
-        if (modal) modal.classList.add('active');
-    };
+    <script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js"></script>
 
-    window.closeModal = function(modalId) {
-        const modal = document.getElementById(modalId);
-        if (modal) modal.classList.remove('active');
-    };
+    <script>
+        window.roomId = "{{ room.id }}";
+        window.currentUserId = "{{ request.user.id }}";
+        window.currentUsername = "{{ request.user.username }}";
+    </script>
 
-    // Admin dropdown toggle
-    document.querySelector('.admin-menu-btn')?.addEventListener('click', (e) => {
-        const dropdown = document.getElementById('admin-dropdown-menu');
-        dropdown?.classList.toggle('hidden');
-    });
+    <script type="module" data-cfasync="false" src="{% static 'js/main.js' %}?v=1.1.5"></script>
 
-    document.addEventListener('click', (e) => {
-        const dropdown = document.getElementById('admin-dropdown-menu');
-        const adminPanel = document.getElementById('admin-panel');
-        if (dropdown && adminPanel && !adminPanel.contains(e.target)) {
-            dropdown.classList.add('hidden');
-        }
-    });
-</script>
-
-<script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js"></script>
-
-<script>
-    window.roomId = "{{ room.id }}";
-    window.currentUserId = "{{ request.user.id }}";
-    window.currentUsername = "{{ request.user.username }}";
-</script>
-
-<script type="module" data-cfasync="false" src="{% static 'js/main.js' %}?v=1.1.5"></script>
-
-{% endblock %}
+    {% endblock %}

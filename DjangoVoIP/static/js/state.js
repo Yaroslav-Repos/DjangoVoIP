@@ -28,5 +28,7 @@ export const state = {
     remoteScreenAudioTracks: {},
     remoteScreenWindows: {},
 
-    localAudioPublication: null
+    localAudioPublication: null, 
+    remoteScreenPublications: {}, 
+
 };

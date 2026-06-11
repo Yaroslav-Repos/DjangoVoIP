@@ -1,5 +1,6 @@
 
 import { state } from './state.js';
+import { formatDate } from './utils.js';
 
 export async function loadChatHistory() {
     try {
@@ -18,13 +19,14 @@ export async function loadChatHistory() {
 
                 const canDelete = (msg.user.username === window.currentUsername) || state.isAdmin;
 
+                const date =  formatDate(msg.created_at);
                 const msgHtml = `
-            <div class="message-wrapper" id="msg-${msg.id}">
-                <strong>${msg.user.username}:</strong> ${msg.text}
-                <div class="message-options">
-                    ${canDelete ? `<button class="delete-msg-btn" data-id="${msg.id}" title="Видалити повідомлення">🗑️</button>` : ''}
-                </div>
-            </div>`;
+    <div class="message-wrapper" id="msg-${msg.id}">
+        <small>${date}</small> <strong>${msg.user.username}:</strong> ${msg.text}
+        <div class="message-options">
+            ${canDelete ? `<button class="delete-msg-btn" data-id="${msg.id}" title="Видалити повідомлення">🗑️</button>` : ''}
+        </div>
+    </div>`;
                 chatBox.innerHTML += msgHtml;
             });
             chatBox.scrollTop = chatBox.scrollHeight;
@@ -46,13 +48,14 @@ export async function loadMoreMessages() {
 
                 const canDelete = (msg.user.username === window.currentUsername) || state.isAdmin;
 
+                const date = formatDate(msg.created_at);
                 const newMsg = `
-        <div class="message-wrapper" id="msg-${msg.id}">
-            <strong>${msg.user.username}:</strong> ${msg.text}
-            <div class="message-options">
-                ${canDelete ? `<button class="delete-msg-btn" data-id="${msg.id}" title="Видалити повідомлення">🗑️</button>` : ''}
-            </div>
-        </div>`;
+    <div class="message-wrapper" id="msg-${msg.id}">
+        <small>${date}</small> <strong>${msg.user.username}:</strong> ${msg.text}
+        <div class="message-options">
+            ${canDelete ? `<button class="delete-msg-btn" data-id="${msg.id}" title="Видалити повідомлення">🗑️</button>` : ''}
+        </div>
+    </div>`;
                 chatBox.insertAdjacentHTML('afterbegin', newMsg);
             });
 
