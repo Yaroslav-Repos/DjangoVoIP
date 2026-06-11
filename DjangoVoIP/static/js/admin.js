@@ -145,7 +145,6 @@ export function initAdminListeners() {
                 const data = await response.json();
                 alert(`${data.username} видалено з кімнати`);
                 closeModal('remove-member-modal');
-                location.reload();
             } else {
                 const data = await response.json();
                 alert('Помилка: ' + (data.detail || 'Не вдалося видалити користувача'));

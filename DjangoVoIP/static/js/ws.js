@@ -1,7 +1,7 @@
 
 import { state } from './state.js';
 import { connectionStates, updateMyConnectionStatus, showLocalToast, formatDate } from './utils.js';
-import { initAudio, connectLiveKit, detachRemoteTrack } from './media.js';
+import { initAudio, connectLiveKit, detachRemoteTrack, addRemoteScreenShare } from './media.js';
 import { loadChatHistory } from './chat.js';
 
 
@@ -108,7 +108,7 @@ export function initWebSocket() {
 
                 const name = document.createElement('span');
                 name.className = 'username';
-                name.textContent = payload.username; 
+                name.textContent = payload.username;
 
                 const status = document.createElement('span');
                 status.className = 'user-status';
@@ -119,6 +119,15 @@ export function initWebSocket() {
                 li.appendChild(avatar);
                 li.appendChild(info);
                 userList.appendChild(li);
+
+                // Якщо LiveKit підключився раніше, ніж WebSocket намалював юзера,
+                // публікація вже лежить у стейті, але кнопки в DOM ще немає. Малюємо її:
+                if (state.remoteScreenPublications[payload.user_id]) {
+                    const screenVideoPub = state.remoteScreenPublications[payload.user_id][LivekitClient.Track.Source.ScreenShare];
+                    if (screenVideoPub) {
+                        addRemoteScreenShare(screenVideoPub, payload.user_id);
+                    }
+                }
             }
         } else if (payload.action === 'leave') {
             const li = document.getElementById(`user-${payload.user_id}`);

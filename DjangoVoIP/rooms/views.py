@@ -586,7 +586,21 @@ class RoomViewSet(viewsets.ModelViewSet):
         try:
             membership = RoomMembership.objects.get(user=user, room=room)
             membership.delete()
+
+            channel_layer = get_channel_layer()
+
+            async_to_sync(channel_layer.group_send)(
+                f'ts_room_{room.id}',
+                {
+                    'type': 'force_disconnect',
+                    'user_id': user.id
+                }
+            )
+
+            async_to_sync(kick_from_livekit)(room.id, user.id)
+
             return Response({"status": "left"})
+
         except RoomMembership.DoesNotExist:
             return Response(
                 {"detail": "Ви не є членом цієї кімнати."},

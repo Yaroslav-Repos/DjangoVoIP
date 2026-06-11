@@ -11,27 +11,24 @@ export async function connectLiveKit() {
         const data = await res.json();
         const { token, livekit_url } = data;
 
-        // Вимикаємо автоматичну підписку, щоб контролювати потік даних власноруч
         state.livekitRoom = new LivekitClient.Room({
             adaptiveStream: true,
             dynacast: true,
             autoSubscribe: false
         });
 
-        // Подія виявлення публікації треку (до підписки)
-        state.livekitRoom.on(LivekitClient.RoomEvent.TrackPublished, (publication, participant) => {
-            console.log(`[DEBUG LiveKit] TrackPublished: kind=${publication.kind}, source=${publication.source}, participant=${participant.identity}`);
+        // 
+        function processPublishedTrack(publication, participant) {
+            console.log(`[DEBUG LiveKit] Processing Track: kind=${publication.kind}, source=${publication.source}, participant=${participant.identity}`);
 
             if (publication.source === LivekitClient.Track.Source.ScreenShare ||
                 publication.source === LivekitClient.Track.Source.ScreenShareAudio) {
 
-                // Зберігаємо публікацію в стейт, щоб увімкнути підписку за запитом
                 if (!state.remoteScreenPublications[participant.identity]) {
                     state.remoteScreenPublications[participant.identity] = {};
                 }
                 state.remoteScreenPublications[participant.identity][publication.source] = publication;
 
-                // Показуємо кнопку "Дивитись" тільки при появі Відео-треку трансляції
                 if (publication.kind === LivekitClient.Track.Kind.Video) {
                     addRemoteScreenShare(publication, participant.identity);
                 }
@@ -39,9 +36,14 @@ export async function connectLiveKit() {
                 // На звичайні мікрофони підписуємось автоматично завжди
                 publication.setSubscribed(true);
             }
+        }
+
+        // Подія виявлення публікації треку 
+        state.livekitRoom.on(LivekitClient.RoomEvent.TrackPublished, (publication, participant) => {
+            processPublishedTrack(publication, participant);
         });
 
-        // Стрім приходить на клієнт ТІЛЬКИ після успішного setSubscribed(true)
+        // Подія стріму 
         state.livekitRoom.on(LivekitClient.RoomEvent.TrackSubscribed, (track, publication, participant) => {
             console.log(`[DEBUG LiveKit] TrackSubscribed: kind=${track.kind}, source=${publication.source}, participant=${participant.identity}`);
 
@@ -75,7 +77,7 @@ export async function connectLiveKit() {
             }
         });
 
-        // Обробка повного закриття трансляції стрімером
+        // Обробка повного закриття трансляції стрімером 
         state.livekitRoom.on(LivekitClient.RoomEvent.TrackUnpublished, (publication, participant) => {
             console.log(`[DEBUG LiveKit] TrackUnpublished: source=${publication.source}, participant=${participant.identity}`);
 
@@ -86,6 +88,7 @@ export async function connectLiveKit() {
             }
         });
 
+        // Відписка від треків 
         state.livekitRoom.on(LivekitClient.RoomEvent.TrackUnsubscribed, (track, publication, participant) => {
             console.log(`[DEBUG LiveKit] TrackUnsubscribed: kind=${track.kind}, source=${publication.source}`);
 
@@ -105,14 +108,19 @@ export async function connectLiveKit() {
         await state.livekitRoom.connect(livekit_url, token);
         console.log('[LiveKit] Connected successfully!');
 
+        // Обробляємо користувачів та їхні треки, які ВЖЕ були в кімнаті на момент нашого заходження
+        state.livekitRoom.remoteParticipants.forEach((participant) => {
+            participant.trackPublications.forEach((publication) => {
+                processPublishedTrack(publication, participant);
+            });
+        });
+
         if (state.localStream) {
             const audioTrack = state.localStream.getAudioTracks()[0];
             if (audioTrack) {
-                // Зберігаємо публікацію для керування SFU-мутом
                 state.localAudioPublication = await state.livekitRoom.localParticipant.publishTrack(audioTrack);
                 console.log('[LiveKit] Local audio published');
 
-                // Якщо користувач увімкнув мут до підключення кімнати
                 if (state.isMuted) {
                     await state.localAudioPublication.track.mute();
                 }
@@ -479,6 +487,9 @@ function createFloatingWindow(userId, username) {
     container.className = 'floating-stream-window';
     container.id = `stream-win-${userId}`;
 
+    // ВАЖЛИВО для мобільних: забороняємо браузеру скролити екран під час перетягування вікна
+    container.style.touchAction = 'none';
+
     const header = document.createElement('div');
     header.className = 'stream-window-header';
 
@@ -516,7 +527,8 @@ function createFloatingWindow(userId, username) {
 
     const resizeHandle = document.createElement('div');
     resizeHandle.className = 'stream-window-resize-handle';
-    resizeHandle.style.cssText = 'position: absolute; right: 0; bottom: 0; width: 14px; height: 14px; cursor: nwse-resize; z-index: 100;';
+    // Додано touch-action: none і сюди
+    resizeHandle.style.cssText = 'position: absolute; right: 0; bottom: 0; width: 20px; height: 20px; cursor: nwse-resize; z-index: 100; touch-action: none;';
     resizeHandle.style.backgroundImage = 'linear-gradient(135deg, transparent 30%, #ccc 30%, #ccc 50%, transparent 50%, transparent 70%, #ccc 70%, #ccc 90%, transparent 90%)';
     container.appendChild(resizeHandle);
 
@@ -544,10 +556,11 @@ function createFloatingWindow(userId, username) {
         isMaximized = !isMaximized;
     };
 
+    // --- ПЕРЕТЯГУВАННЯ (Оновлено на PointerEvents) ---
     let isDragging = false;
     let startX, startY, initialX, initialY;
 
-    header.onmousedown = (e) => {
+    header.onpointerdown = (e) => {
         if (e.target.tagName.toLowerCase() === 'button') return;
         if (container.classList.contains('maximized')) return;
 
@@ -559,11 +572,14 @@ function createFloatingWindow(userId, username) {
         initialX = rect.left;
         initialY = rect.top;
 
-        document.addEventListener('mousemove', onMouseMove);
-        document.addEventListener('mouseup', onMouseUp);
+        // Захоплюємо вказівник, щоб події не губилися при швидкому русі
+        header.setPointerCapture(e.pointerId);
+
+        document.addEventListener('pointermove', onPointerMove);
+        document.addEventListener('pointerup', onPointerUp);
     };
 
-    function onMouseMove(e) {
+    function onPointerMove(e) {
         if (!isDragging) return;
         container.style.left = `${initialX + (e.clientX - startX)}px`;
         container.style.top = `${initialY + (e.clientY - startY)}px`;
@@ -571,16 +587,19 @@ function createFloatingWindow(userId, username) {
         container.style.right = 'auto';
     }
 
-    function onMouseUp() {
+    function onPointerUp(e) {
+        if (!isDragging) return;
         isDragging = false;
-        document.removeEventListener('mousemove', onMouseMove);
-        document.removeEventListener('mouseup', onMouseUp);
+        try { header.releasePointerCapture(e.pointerId); } catch (err) { }
+        document.removeEventListener('pointermove', onPointerMove);
+        document.removeEventListener('pointerup', onPointerUp);
     }
 
+    // --- ЗМІНА РОЗМІРУ (Оновлено на PointerEvents) ---
     let isResizing = false;
     let startWidth, startHeight, startMouseX, startMouseY;
 
-    resizeHandle.onmousedown = (e) => {
+    resizeHandle.onpointerdown = (e) => {
         e.preventDefault();
         e.stopPropagation();
         if (container.classList.contains('maximized')) return;
@@ -591,11 +610,13 @@ function createFloatingWindow(userId, username) {
         startMouseX = e.clientX;
         startMouseY = e.clientY;
 
-        document.addEventListener('mousemove', onMouseMoveResize);
-        document.addEventListener('mouseup', onMouseUpResize);
+        resizeHandle.setPointerCapture(e.pointerId);
+
+        document.addEventListener('pointermove', onPointerMoveResize);
+        document.addEventListener('pointerup', onPointerUpResize);
     };
 
-    function onMouseMoveResize(e) {
+    function onPointerMoveResize(e) {
         if (!isResizing) return;
         const newWidth = startWidth + (e.clientX - startMouseX);
         const newHeight = startHeight + (e.clientY - startMouseY);
@@ -604,10 +625,12 @@ function createFloatingWindow(userId, username) {
         if (newHeight > 240) container.style.height = `${newHeight}px`;
     }
 
-    function onMouseUpResize() {
+    function onPointerUpResize(e) {
+        if (!isResizing) return;
         isResizing = false;
-        document.removeEventListener('mousemove', onMouseMoveResize);
-        document.removeEventListener('mouseup', onMouseUpResize);
+        try { resizeHandle.releasePointerCapture(e.pointerId); } catch (err) { }
+        document.removeEventListener('pointermove', onPointerMoveResize);
+        document.removeEventListener('pointerup', onPointerUpResize);
     }
 
     return { winContainer: container, videoElem: video };
