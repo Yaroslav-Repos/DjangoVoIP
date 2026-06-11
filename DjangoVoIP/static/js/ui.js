@@ -72,11 +72,24 @@ export function hideVolumeContext() {
 }
 
 export function initializeEventListeners() {
+
     const muteBtn = document.getElementById('mute-btn');
     if (muteBtn) {
-        muteBtn.addEventListener('click', function () {
+        muteBtn.addEventListener('click', async function () {
             state.isMuted = !state.isMuted;
-            if (state.localStream) state.localStream.getAudioTracks()[0].enabled = !state.isMuted;
+
+            if (state.localAudioPublication && state.localAudioPublication.track) {
+                if (state.isMuted) {
+                    await state.localAudioPublication.track.mute();
+                    console.log('[LiveKit] SFU processing stopped (Track Muted)');
+                } else {
+                    await state.localAudioPublication.track.unmute();
+                    console.log('[LiveKit] SFU processing resumed (Track Unmuted)');
+                }
+            } else if (state.localStream) {
+                state.localStream.getAudioTracks()[0].enabled = !state.isMuted;
+            }
+
             state.chatSocket.send(JSON.stringify({ stream: 'voice', payload: { isMuted: state.isMuted } }));
             this.innerText = state.isMuted ? "🔇" : "🔊";
         });

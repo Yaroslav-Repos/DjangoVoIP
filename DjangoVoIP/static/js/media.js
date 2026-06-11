@@ -11,61 +11,93 @@ export async function connectLiveKit() {
         const data = await res.json();
         const { token, livekit_url } = data;
 
+        // Вимикаємо автоматичну підписку, щоб контролювати потік даних власноруч
         state.livekitRoom = new LivekitClient.Room({
             adaptiveStream: true,
-            dynacast: true
+            dynacast: true,
+            autoSubscribe: false
         });
 
+        // Подія виявлення публікації треку (до підписки)
+        state.livekitRoom.on(LivekitClient.RoomEvent.TrackPublished, (publication, participant) => {
+            console.log(`[DEBUG LiveKit] TrackPublished: kind=${publication.kind}, source=${publication.source}, participant=${participant.identity}`);
+
+            if (publication.source === LivekitClient.Track.Source.ScreenShare ||
+                publication.source === LivekitClient.Track.Source.ScreenShareAudio) {
+
+                // Зберігаємо публікацію в стейт, щоб увімкнути підписку за запитом
+                if (!state.remoteScreenPublications[participant.identity]) {
+                    state.remoteScreenPublications[participant.identity] = {};
+                }
+                state.remoteScreenPublications[participant.identity][publication.source] = publication;
+
+                // Показуємо кнопку "Дивитись" тільки при появі Відео-треку трансляції
+                if (publication.kind === LivekitClient.Track.Kind.Video) {
+                    addRemoteScreenShare(publication, participant.identity);
+                }
+            } else {
+                // На звичайні мікрофони підписуємось автоматично завжди
+                publication.setSubscribed(true);
+            }
+        });
+
+        // Стрім приходить на клієнт ТІЛЬКИ після успішного setSubscribed(true)
         state.livekitRoom.on(LivekitClient.RoomEvent.TrackSubscribed, (track, publication, participant) => {
             console.log(`[DEBUG LiveKit] TrackSubscribed: kind=${track.kind}, source=${publication.source}, participant=${participant.identity}`);
 
             if (track.kind === LivekitClient.Track.Kind.Audio) {
                 if (publication.source === LivekitClient.Track.Source.ScreenShareAudio) {
-                    console.log(`[DEBUG ScreenAudio] Received ScreenShareAudio track from ${participant.identity}`);
                     state.remoteScreenAudioTracks[participant.identity] = track;
 
-                    // Прив'язуємо аудіо до відео-плеєра у відкритому вікні
                     const winContainer = state.remoteScreenWindows[participant.identity];
                     if (winContainer) {
                         const videoElem = winContainer.querySelector('.stream-window-video');
                         if (videoElem) {
                             track.attach(videoElem);
-                            console.log(`[DEBUG ScreenAudio] Successfully attached ScreenShareAudio to in-app window video element.`);
+                            console.log(`[DEBUG ScreenAudio] Attached ScreenShareAudio on the fly.`);
                         }
-                    } else {
-                        console.log(`[DEBUG ScreenAudio] Window for ${participant.identity} is not open yet. Track saved in state for later.`);
                     }
                 } else {
-                    // Звичайний мікрофон користувача
                     attachRemoteTrack(track, participant.identity);
                 }
             }
             else if (track.kind === LivekitClient.Track.Kind.Video && publication.source === LivekitClient.Track.Source.ScreenShare) {
-                console.log(`[DEBUG ScreenShare] Received ScreenShare Video track from ${participant.identity}`);
-                addRemoteScreenShare(track, participant.identity);
+                state.remoteScreenTracks[participant.identity] = track;
+
+                const winContainer = state.remoteScreenWindows[participant.identity];
+                if (winContainer) {
+                    const videoElem = winContainer.querySelector('.stream-window-video');
+                    if (videoElem) {
+                        track.attach(videoElem);
+                        console.log(`[DEBUG ScreenShare] Attached ScreenShare Video on the fly.`);
+                    }
+                }
+            }
+        });
+
+        // Обробка повного закриття трансляції стрімером
+        state.livekitRoom.on(LivekitClient.RoomEvent.TrackUnpublished, (publication, participant) => {
+            console.log(`[DEBUG LiveKit] TrackUnpublished: source=${publication.source}, participant=${participant.identity}`);
+
+            if (publication.source === LivekitClient.Track.Source.ScreenShare ||
+                publication.source === LivekitClient.Track.Source.ScreenShareAudio) {
+
+                removeRemoteScreenShare(participant.identity);
             }
         });
 
         state.livekitRoom.on(LivekitClient.RoomEvent.TrackUnsubscribed, (track, publication, participant) => {
-            console.log(`[DEBUG LiveKit] TrackUnsubscribed: kind=${track.kind}, source=${publication.source}, participant=${participant.identity}`);
+            console.log(`[DEBUG LiveKit] TrackUnsubscribed: kind=${track.kind}, source=${publication.source}`);
 
             if (track.kind === LivekitClient.Track.Kind.Audio) {
                 if (publication.source === LivekitClient.Track.Source.ScreenShareAudio) {
-                    const winContainer = state.remoteScreenWindows[participant.identity];
-                    if (winContainer) {
-                        const videoElem = winContainer.querySelector('.stream-window-video');
-                        if (videoElem) {
-                            track.detach(videoElem);
-                        }
-                    }
                     delete state.remoteScreenAudioTracks[participant.identity];
-                    console.log(`[DEBUG ScreenAudio] Removed ScreenShareAudio track from state for ${participant.identity}`);
                 } else {
                     detachRemoteTrack(participant.identity);
                 }
             }
             else if (track.kind === LivekitClient.Track.Kind.Video && publication.source === LivekitClient.Track.Source.ScreenShare) {
-                removeRemoteScreenShare(participant.identity);
+                delete state.remoteScreenTracks[participant.identity];
             }
         });
 
@@ -76,8 +108,14 @@ export async function connectLiveKit() {
         if (state.localStream) {
             const audioTrack = state.localStream.getAudioTracks()[0];
             if (audioTrack) {
-                await state.livekitRoom.localParticipant.publishTrack(audioTrack);
+                // Зберігаємо публікацію для керування SFU-мутом
+                state.localAudioPublication = await state.livekitRoom.localParticipant.publishTrack(audioTrack);
                 console.log('[LiveKit] Local audio published');
+
+                // Якщо користувач увімкнув мут до підключення кімнати
+                if (state.isMuted) {
+                    await state.localAudioPublication.track.mute();
+                }
             }
         }
     } catch (error) {
@@ -229,38 +267,25 @@ export async function startScreenShare() {
             audio: { suppressLocalAudioPlayback: false }
         });
 
-        const videoTracksCount = state.localScreenStream.getVideoTracks().length;
-        const audioTracksCount = state.localScreenStream.getAudioTracks().length;
-        console.log(`[DEBUG ScreenShare] getDisplayMedia success. Video tracks: ${videoTracksCount}, Audio tracks: ${audioTracksCount}`);
-
         const videoTrack = state.localScreenStream.getVideoTracks()[0];
         const audioTrack = state.localScreenStream.getAudioTracks()[0];
 
         videoTrack.onended = () => {
-            console.log(`[DEBUG ScreenShare] Video track ended by user.`);
             stopScreenShare();
         };
 
         if (!state.livekitRoom) throw new Error("LiveKit кімната ще не готова.");
 
-        console.log(`[DEBUG ScreenShare] Publishing video track to LiveKit...`);
         state.localScreenPublication = await state.livekitRoom.localParticipant.publishTrack(videoTrack, {
             name: 'screen',
             source: LivekitClient.Track.Source.ScreenShare
         });
-        console.log(`[DEBUG ScreenShare] Video track published successfully.`);
 
-        if (!audioTrack) {
-            console.warn(`[DEBUG ScreenAudio] WARNING: No audio track found in localScreenStream! User did not share system audio or browser prevented it.`);
-        } else {
-            console.log(`[DEBUG ScreenAudio] Found audio track: label="${audioTrack.label}", muted=${audioTrack.muted}, enabled=${audioTrack.enabled}`);
-            console.log(`[DEBUG ScreenAudio] Publishing audio track to LiveKit...`);
-
+        if (audioTrack) {
             state.localScreenAudioPublication = await state.livekitRoom.localParticipant.publishTrack(audioTrack, {
                 name: 'screen_audio',
                 source: LivekitClient.Track.Source.ScreenShareAudio
             });
-            console.log(`[DEBUG ScreenAudio] Audio track published successfully to LiveKit!`);
         }
 
         state.isSharingScreen = true;
@@ -279,7 +304,7 @@ export async function startScreenShare() {
             const video = win.document.createElement('video');
             video.autoplay = true;
             video.playsInline = true;
-            video.muted = true; // Стрімер обов'язково muted
+            video.muted = true;
             video.controls = true;
             video.style.cssText = "max-width: 100%; max-height: 100%; object-fit: contain; outline: none;";
             win.document.body.appendChild(video);
@@ -299,7 +324,6 @@ export async function startScreenShare() {
 export async function stopScreenShare() {
     if (!state.isSharingScreen) return;
     state.isSharingScreen = false;
-    console.log(`[DEBUG ScreenShare] Stopping screen share...`);
 
     if (state.localScreenWindow && !state.localScreenWindow.closed) {
         state.localScreenWindow.onbeforeunload = null;
@@ -313,10 +337,7 @@ export async function stopScreenShare() {
     }
 
     if (state.localScreenAudioPublication) {
-        try {
-            console.log(`[DEBUG ScreenAudio] Unpublishing local screen audio...`);
-            await state.livekitRoom.localParticipant.unpublishTrack(state.localScreenAudioPublication.track);
-        } catch (e) { console.error(e); }
+        try { await state.livekitRoom.localParticipant.unpublishTrack(state.localScreenAudioPublication.track); } catch (e) { console.error(e); }
         state.localScreenAudioPublication = null;
     }
 
@@ -332,9 +353,8 @@ export async function stopScreenShare() {
     }
 }
 
-export function addRemoteScreenShare(track, userId) {
-    state.remoteScreenTracks[userId] = track;
-
+// Викликається при виявленні публікації (тільки малює інтерфейс)
+export function addRemoteScreenShare(publication, userId) {
     const userItem = document.getElementById(`user-${userId}`);
     if (userItem && !userItem.querySelector('.screenshare-icon')) {
         const icon = document.createElement('button');
@@ -357,8 +377,9 @@ export function addRemoteScreenShare(track, userId) {
 export function removeRemoteScreenShare(userId) {
     closeRemoteScreenWindow(userId);
 
-    delete state.remoteScreenTracks[userId];
-    delete state.remoteScreenAudioTracks[userId];
+    if (state.remoteScreenPublications[userId]) {
+        delete state.remoteScreenPublications[userId];
+    }
 
     const userItem = document.getElementById(`user-${userId}`);
     if (userItem) {
@@ -378,70 +399,86 @@ export function updateRemoteScreenIconState(userId, isWatching) {
     }
 }
 
+// Підписка на потік ТІЛЬКИ у момент відкриття вікна перегляду
 export function openRemoteScreenWindow(userId) {
-    console.log(`[DEBUG ScreenShare] Toggling in-app window for userId: ${userId}`);
-
     if (state.remoteScreenWindows && state.remoteScreenWindows[userId]) {
         closeRemoteScreenWindow(userId);
         return;
     }
 
-    const videoTrack = state.remoteScreenTracks[userId];
-    const audioTrack = state.remoteScreenAudioTracks[userId];
-    const username = state.connectedUsers[userId] || "Користувач";
-
-    if (!videoTrack) {
-        console.error(`[DEBUG ScreenShare] No video track found for ${userId}!`);
+    const userPubs = state.remoteScreenPublications[userId];
+    if (!userPubs || !userPubs[LivekitClient.Track.Source.ScreenShare]) {
         return alert("Трансляція більше недоступна");
     }
 
+    const username = state.connectedUsers[userId] || "Користувач";
     const { winContainer, videoElem } = createFloatingWindow(userId, username);
-    document.body.appendChild(winContainer);
-
-    console.log(`[DEBUG ScreenShare] Attaching video track to in-app window video element.`);
-    videoTrack.attach(videoElem);
-
-    // Прив'язуємо аудіопотік екрана до того самого елемента video
-    if (audioTrack) {
-        console.log(`[DEBUG ScreenAudio] Found existing audio track for ${userId}. Attaching to the SAME video element.`);
-        audioTrack.attach(videoElem);
-    } else {
-        console.warn(`[DEBUG ScreenAudio] No audio track found in state for ${userId} yet.`);
-    }
 
     if (!state.remoteScreenWindows) state.remoteScreenWindows = {};
     state.remoteScreenWindows[userId] = winContainer;
+    document.body.appendChild(winContainer);
+
+    // Даємо команду SFU: "Я хочу отримувати ці дані"
+    console.log(`[LiveKit] On-demand subscribing for user: ${userId}`);
+    userPubs[LivekitClient.Track.Source.ScreenShare].setSubscribed(true);
+
+    if (userPubs[LivekitClient.Track.Source.ScreenShareAudio]) {
+        userPubs[LivekitClient.Track.Source.ScreenShareAudio].setSubscribed(true);
+    }
+
+    // Якщо треки вже встигли прилетіти / закешуватися
+    if (state.remoteScreenTracks[userId]) state.remoteScreenTracks[userId].attach(videoElem);
+    if (state.remoteScreenAudioTracks[userId]) state.remoteScreenAudioTracks[userId].attach(videoElem);
 
     updateRemoteScreenIconState(userId, true);
 }
 
+// Розірвання підписки на потік (SFU перестає відправляти байти клієнту)
 function closeRemoteScreenWindow(userId) {
     if (!state.remoteScreenWindows) return;
 
     const winContainer = state.remoteScreenWindows[userId];
     if (winContainer) {
-        console.log(`[DEBUG ScreenShare] Closing in-app viewer window for user: ${userId}`);
+        console.log(`[DEBUG ScreenShare] Unsubscribing screen streams for user: ${userId}`);
         const videoElem = winContainer.querySelector('.stream-window-video');
 
-        if (state.remoteScreenTracks[userId] && videoElem) {
-            state.remoteScreenTracks[userId].detach(videoElem);
-        }
-        if (state.remoteScreenAudioTracks[userId] && videoElem) {
-            state.remoteScreenAudioTracks[userId].detach(videoElem);
+        if (state.remoteScreenTracks[userId] && videoElem) state.remoteScreenTracks[userId].detach(videoElem);
+        if (state.remoteScreenAudioTracks[userId] && videoElem) state.remoteScreenAudioTracks[userId].detach(videoElem);
+
+        // Захист від race conditions: помилка підписки не повинна ламати очищення DOM
+        const userPubs = state.remoteScreenPublications[userId];
+        if (userPubs) {
+            try {
+                if (userPubs[LivekitClient.Track.Source.ScreenShare]) {
+                    userPubs[LivekitClient.Track.Source.ScreenShare].setSubscribed(false);
+                }
+            } catch (e) {
+                console.warn('[LiveKit] Video unsubscribe failed (track might be already dead):', e);
+            }
+            try {
+                if (userPubs[LivekitClient.Track.Source.ScreenShareAudio]) {
+                    userPubs[LivekitClient.Track.Source.ScreenShareAudio].setSubscribed(false);
+                }
+            } catch (e) {
+                console.warn('[LiveKit] Audio unsubscribe failed:', e);
+            }
         }
 
         winContainer.remove();
         delete state.remoteScreenWindows[userId];
+        delete state.remoteScreenTracks[userId];
+        delete state.remoteScreenAudioTracks[userId];
+
         updateRemoteScreenIconState(userId, false);
     }
 }
+
 
 function createFloatingWindow(userId, username) {
     const container = document.createElement('div');
     container.className = 'floating-stream-window';
     container.id = `stream-win-${userId}`;
 
-    // Шапка вікна
     const header = document.createElement('div');
     header.className = 'stream-window-header';
 
@@ -454,19 +491,16 @@ function createFloatingWindow(userId, username) {
     const maxBtn = document.createElement('button');
     maxBtn.className = 'stream-window-btn';
     maxBtn.innerHTML = '🔲';
-    maxBtn.title = 'Розгорнути на всю вкладку';
 
     const closeBtn = document.createElement('button');
     closeBtn.className = 'stream-window-btn close';
     closeBtn.innerHTML = '❌';
-    closeBtn.title = 'Закрити';
 
     controls.appendChild(maxBtn);
     controls.appendChild(closeBtn);
     header.appendChild(title);
     header.appendChild(controls);
 
-    // Тіло вікна
     const body = document.createElement('div');
     body.className = 'stream-window-body';
 
@@ -480,14 +514,12 @@ function createFloatingWindow(userId, username) {
     container.appendChild(header);
     container.appendChild(body);
 
-    // Повзунок для зміни розміру у правому нижньому кутку
     const resizeHandle = document.createElement('div');
     resizeHandle.className = 'stream-window-resize-handle';
     resizeHandle.style.cssText = 'position: absolute; right: 0; bottom: 0; width: 14px; height: 14px; cursor: nwse-resize; z-index: 100;';
     resizeHandle.style.backgroundImage = 'linear-gradient(135deg, transparent 30%, #ccc 30%, #ccc 50%, transparent 50%, transparent 70%, #ccc 70%, #ccc 90%, transparent 90%)';
     container.appendChild(resizeHandle);
 
-    // Обробники подій кнопок керування
     closeBtn.onclick = () => closeRemoteScreenWindow(userId);
 
     let isMaximized = false;
@@ -512,7 +544,6 @@ function createFloatingWindow(userId, username) {
         isMaximized = !isMaximized;
     };
 
-    // Логіка перетягування (Drag-and-Drop) за шапку вікна
     let isDragging = false;
     let startX, startY, initialX, initialY;
 
@@ -534,11 +565,8 @@ function createFloatingWindow(userId, username) {
 
     function onMouseMove(e) {
         if (!isDragging) return;
-        const dx = e.clientX - startX;
-        const dy = e.clientY - startY;
-
-        container.style.left = `${initialX + dx}px`;
-        container.style.top = `${initialY + dy}px`;
+        container.style.left = `${initialX + (e.clientX - startX)}px`;
+        container.style.top = `${initialY + (e.clientY - startY)}px`;
         container.style.bottom = 'auto';
         container.style.right = 'auto';
     }
@@ -549,13 +577,12 @@ function createFloatingWindow(userId, username) {
         document.removeEventListener('mouseup', onMouseUp);
     }
 
-    // Логіка зміни розміру мишкою (Resize) за куток
     let isResizing = false;
     let startWidth, startHeight, startMouseX, startMouseY;
 
     resizeHandle.onmousedown = (e) => {
         e.preventDefault();
-        e.stopPropagation(); // Запобігає спрацьовуванню drag-and-drop шапки
+        e.stopPropagation();
         if (container.classList.contains('maximized')) return;
 
         isResizing = true;
@@ -570,19 +597,11 @@ function createFloatingWindow(userId, username) {
 
     function onMouseMoveResize(e) {
         if (!isResizing) return;
-        const dw = e.clientX - startMouseX;
-        const dh = e.clientY - startMouseY;
+        const newWidth = startWidth + (e.clientX - startMouseX);
+        const newHeight = startHeight + (e.clientY - startMouseY);
 
-        const newWidth = startWidth + dw;
-        const newHeight = startHeight + dh;
-
-        // Мінімальні ліміти розширення вікна
-        if (newWidth > 320) {
-            container.style.width = `${newWidth}px`;
-        }
-        if (newHeight > 240) {
-            container.style.height = `${newHeight}px`;
-        }
+        if (newWidth > 320) container.style.width = `${newWidth}px`;
+        if (newHeight > 240) container.style.height = `${newHeight}px`;
     }
 
     function onMouseUpResize() {

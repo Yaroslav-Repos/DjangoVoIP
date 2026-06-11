@@ -51,7 +51,7 @@
             </div>
         </div>
         <div style="margin-top: 10px; width: 100%;">
-            <button id="screenshare-btn" style="width: 100%; padding: 10px 12px; background: #5865f2; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; font-size: 12px; transition: background 0.2s; white-space: nowrap;">Демонстрація екрана</button>
+            <button id="screenshare-btn" style="width: 100%; padding: 10px 12px; background: #5865f2; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; font-size: 12px; transition: background 0.2s; white-space: nowrap;">🖥️ Почати трансляцію</button>
         </div>
     </div>
 
@@ -147,6 +147,31 @@
         <button id="mute-user-btn" style="width: 100%; padding: 8px; background: #40444b; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 500; transition: background 0.2s;">🔊 Mute</button>
     </div>
 
+    <div id="screenshare-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>🖥️ Параметри демонстрації екрана</h3>
+                <button class="modal-close" data-modal="screenshare-modal">&times;</button>
+            </div>
+
+            <div style="margin-bottom: 15px; text-align: left;">
+                <label for="screenshare-quality" style="display: block; margin-bottom: 8px; color: #b9bbbe; font-size: 14px;">
+                    Виберіть якість трансляції:
+                </label>
+                <select id="screenshare-quality" style="width: 100%; padding: 10px; background: #2f3136; color: #fff; border: 1px solid #202225; border-radius: 4px; cursor: pointer;">
+                    <option value="1080p">1080p (Full HD, 60 FPS)</option>
+                    <option value="720p">720p (HD, 30 FPS)</option>
+                    <option value="480p">480p (SD, 15 FPS)</option>
+                </select>
+            </div>
+
+            <div class="modal-buttons">
+                <button class="btn-secondary" data-modal="screenshare-modal">Скасувати</button>
+                <button id="confirm-screenshare-btn" class="btn-primary">🖥️ Почати трансляцію</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const roomId = "{{ room.id }}";
         const currentUserId = {{ request.user.id }};
@@ -205,6 +230,6 @@
         window.currentUsername = "{{ request.user.username }}";
     </script>
 
-    <script type="module" data-cfasync="false" src="{% static 'js/main.js' %}?v=1.1.5"></script>
+    <script type="module" data-cfasync="false" src="{% static 'js/main.js' %}?v=2.0.1"></script>
 
     {% endblock %}
