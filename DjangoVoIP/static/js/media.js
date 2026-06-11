@@ -11,8 +11,9 @@ export async function connectLiveKit() {
         const data = await res.json();
         const { token, livekit_url } = data;
 
+
         state.livekitRoom = new LivekitClient.Room({
-            adaptiveStream: true,
+            adaptiveStream: false,
             dynacast: true,
             autoSubscribe: false
         });
@@ -263,10 +264,10 @@ export async function startScreenShare() {
     const quality = qualitySelect ? qualitySelect.value : '1080p';
 
     let constraints = {
-        width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 60, max: 60 }
+        width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 60, max: 60 }, cursor: "always"
     };
-    if (quality === '720p') constraints = { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } };
-    else if (quality === '480p') constraints = { width: { ideal: 854 }, height: { ideal: 480 }, frameRate: { ideal: 15 } };
+    if (quality === '720p') constraints = { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30, max: 60 }, cursor: "always" };
+    else if (quality === '480p') constraints = { width: { ideal: 854 }, height: { ideal: 480 }, frameRate: { ideal: 15, max: 30 }, cursor: "always" };
 
     try {
         console.log(`[DEBUG ScreenShare] Requesting getDisplayMedia...`);
@@ -286,8 +287,16 @@ export async function startScreenShare() {
 
         state.localScreenPublication = await state.livekitRoom.localParticipant.publishTrack(videoTrack, {
             name: 'screen',
-            source: LivekitClient.Track.Source.ScreenShare
-        });
+            source: LivekitClient.Track.Source.ScreenShare,
+            videoCodec: 'h264',
+   
+            videoEncoding: {
+                maxBitrate: quality === '1080p' ? 4_500_000 : (quality === '720p' ? 2_500_000 : 1_000_000),
+                maxFramerate: quality === '1080p' ? 60 : (quality === '720p' ? 30 : 15),
+                priority: 'high' 
+            },
+            dtx: false
+        })
 
         if (audioTrack) {
             state.localScreenAudioPublication = await state.livekitRoom.localParticipant.publishTrack(audioTrack, {
@@ -304,24 +313,24 @@ export async function startScreenShare() {
             btn.style.background = "#f04747";
         }
 
-        const win = window.open("", "_blank", "width=800,height=600,scrollbars=no,resizable=yes");
-        if (win) {
-            win.document.title = "Ваша трансляція екрану";
-            win.document.body.style.cssText = "margin: 0; background-color: #000; display: flex; align-items: center; justify-content: center; height: 100vh; overflow: hidden;";
+        //const win = window.open("", "_blank", "width=800,height=600,scrollbars=no,resizable=yes");
+        //if (win) {
+        //    win.document.title = "Ваша трансляція екрану";
+        //    win.document.body.style.cssText = "margin: 0; background-color: #000; display: flex; align-items: center; justify-content: center; height: 100vh; overflow: hidden;";
 
-            const video = win.document.createElement('video');
-            video.autoplay = true;
-            video.playsInline = true;
-            video.muted = true;
-            video.controls = true;
-            video.style.cssText = "max-width: 100%; max-height: 100%; object-fit: contain; outline: none;";
-            win.document.body.appendChild(video);
+        //    const video = win.document.createElement('video');
+        //    video.autoplay = true;
+        //    video.playsInline = true;
+        //    video.muted = true;
+        //    video.controls = true;
+        //    video.style.cssText = "max-width: 100%; max-height: 100%; object-fit: contain; outline: none;";
+        //    win.document.body.appendChild(video);
 
-            video.srcObject = state.localScreenStream;
-            state.localScreenWindow = win;
+        //    video.srcObject = state.localScreenStream;
+        //    state.localScreenWindow = win;
 
-            win.onbeforeunload = () => { if (state.isSharingScreen) stopScreenShare(); };
-        }
+        //    win.onbeforeunload = () => { if (state.isSharingScreen) stopScreenShare(); };
+        //}
 
     } catch (error) {
         console.error('[ScreenShare] Помилка:', error);
@@ -333,11 +342,11 @@ export async function stopScreenShare() {
     if (!state.isSharingScreen) return;
     state.isSharingScreen = false;
 
-    if (state.localScreenWindow && !state.localScreenWindow.closed) {
-        state.localScreenWindow.onbeforeunload = null;
-        state.localScreenWindow.close();
-    }
-    state.localScreenWindow = null;
+    //if (state.localScreenWindow && !state.localScreenWindow.closed) {
+    //    state.localScreenWindow.onbeforeunload = null;
+    //    state.localScreenWindow.close();
+    //}
+    //state.localScreenWindow = null;
 
     if (state.localScreenPublication) {
         try { await state.livekitRoom.localParticipant.unpublishTrack(state.localScreenPublication.track); } catch (e) { console.error(e); }
