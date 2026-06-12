@@ -90,6 +90,18 @@ export function showLocalToast(message, type = 'info') {
     }, 3000);
 }
 
+
+export function clearMyConnectionStatus() {
+    setTimeout(() => {
+        const myUserItem = document.getElementById(`user-${window.currentUserId}`);
+        if (myUserItem) {
+            const badge = myUserItem.querySelector('.my-connection-badge');
+            if (badge) badge.remove();
+        }
+    }, 2000);
+}
+
+
 export function getCookie(name) {
     let cookieValue = null;
     if (document.cookie && document.cookie !== '') {
