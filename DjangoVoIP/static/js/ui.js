@@ -75,7 +75,39 @@ export function initializeEventListeners() {
 
     const muteBtn = document.getElementById('mute-btn');
     if (muteBtn) {
+
+        if (!state.isAudioReady) {
+            muteBtn.innerText = "🔇";
+            muteBtn.title = "Мікрофон не активовано. Натисніть, щоб надати доступ та увімкнути";
+            muteBtn.classList.add('mic-uninitialized');
+        }
+
         muteBtn.addEventListener('click', async function () {
+
+            if (!state.isAudioReady) {
+                try {
+                    this.innerText = "🔄";
+                    this.title = "Запит доступу до мікрофона...";
+
+                    await initAudio();
+                    await publishLocalAudio();
+                    state.isMuted = false;
+                    this.innerText = "🔊";
+                    this.title = "Вимкнути мікрофон";
+
+                    if (state.chatSocket && state.chatSocket.readyState === WebSocket.OPEN) {
+                        state.chatSocket.send(JSON.stringify({ stream: 'voice', payload: { isMuted: false } }));
+                    }
+                    showLocalToast('Мікрофон успішно підключено', 'success');
+                } catch (err) {
+
+                    this.innerText = "🔇";
+                    this.title = "Помилка доступу. Натисніть, щоб спробувати знову";
+                    showLocalToast('Не вдалося отримати доступ до мікрофона', 'error');
+                }
+                return;
+            }
+
             state.isMuted = !state.isMuted;
 
             if (state.localAudioPublication && state.localAudioPublication.track) {
@@ -90,8 +122,11 @@ export function initializeEventListeners() {
                 state.localStream.getAudioTracks()[0].enabled = !state.isMuted;
             }
 
-            state.chatSocket.send(JSON.stringify({ stream: 'voice', payload: { isMuted: state.isMuted } }));
+            if (state.chatSocket && state.chatSocket.readyState === WebSocket.OPEN) {
+                state.chatSocket.send(JSON.stringify({ stream: 'voice', payload: { isMuted: state.isMuted } }));
+            }
             this.innerText = state.isMuted ? "🔇" : "🔊";
+            this.title = state.isMuted ? "Увімкнути мікрофон" : "Вимкнути мікрофон";
         });
     }
 

@@ -6,6 +6,8 @@ import { loadChatHistory } from './chat.js';
 
 
 export function initWebSocket() {
+    let isIntentionalClose = false;
+
     const wsProtocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
     const wsUrl = `${wsProtocol}${window.location.host}/ws/room/${window.roomId}/`;
     console.log('Connecting to WebSocket:', wsUrl);
@@ -18,13 +20,30 @@ export function initWebSocket() {
         showLocalToast('Помилка з\'єднання WebSocket!', 'error');
     };
 
-    state.chatSocket.onclose = () => {
-        console.warn('WebSocket closed');
-        updateMyConnectionStatus(connectionStates.ERROR, 'Відключено');
-        showLocalToast('Відключено від серверу', 'error');
+    state.chatSocket.onclose = (event) => {
+        console.warn('WebSocket closed', event);
+
+        if (isIntentionalClose) return;
+
+        if (state.wsReconnectAttempts < state.maxWsReconnects) {
+            state.wsReconnectAttempts++;
+            updateMyConnectionStatus(connectionStates.CONNECTING, `Реконект (${state.wsReconnectAttempts}/3)...`);
+            showLocalToast(`Втрачено з'єднання. Спроба відновлення ${state.wsReconnectAttempts} з 3...`, 'info');
+
+            setTimeout(initWebSocket, state.wsReconnectAttempts * 2000);
+        } else {
+            updateMyConnectionStatus(connectionStates.ERROR, 'Відключено');
+            showLocalToast('Не вдалося відновити з\'єднання. Повернення в меню...', 'error');
+            setTimeout(() => {
+                window.location.href = '/menu/';
+            }, 2000);
+        }
     };
 
     state.chatSocket.onopen = async () => {
+
+        state.wsReconnectAttempts = 0;
+
         console.log('WebSocket connected');
         updateMyConnectionStatus(connectionStates.CONNECTING, 'Підключення...');
         showLocalToast('Підключення до серверу...', 'info');
@@ -33,33 +52,58 @@ export function initWebSocket() {
 
             await loadChatHistory();
 
-            updateMyConnectionStatus(connectionStates.CHECKING_MICROPHONE, 'Перевірка мікрофона...');
-            showLocalToast('Перевірка мікрофона...', 'info');
-            await initAudio();
 
-            updateMyConnectionStatus(connectionStates.ESTABLISHING_RTC, 'Встановлення з\'єднання LiveKit...');
-            showLocalToast('Встановлення медіа-з\'єднання...', 'info');
-            await connectLiveKit();
+            try {
+                updateMyConnectionStatus(connectionStates.CHECKING_MICROPHONE, 'Перевірка мікрофона...');
+                showLocalToast('Перевірка мікрофона...', 'info');
+                if (!state.isAudioReady) {
+                    await initAudio();
 
-
-            updateMyConnectionStatus(connectionStates.CONNECTED, 'Готово');
-            showLocalToast('Готово до спілкування! ✅', 'success');
-
-            setTimeout(() => {
-                const myUserItem = document.getElementById(`user-${window.currentUserId}`);
-                if (myUserItem) {
-                    const badge = myUserItem.querySelector('.my-connection-badge');
-                    if (badge) {
-                        badge.style.animation = 'slideOutToast 0.3s ease-out forwards';
-                        setTimeout(() => badge.remove(), 300);
+                    const muteBtn = document.getElementById('mute-btn');
+                    if (muteBtn) {
+                        muteBtn.innerText = "🔊";
+                        muteBtn.title = "Вимкнути мікрофон";
+                        muteBtn.classList.remove('mic-uninitialized');
                     }
-                }
-            }, 2000);
 
-        } catch (error) {
-            updateMyConnectionStatus(connectionStates.ERROR, `Помилка: ${error.message}`);
-            showLocalToast(`Помилка: ${error.message}`, 'error');
-            console.error('Connection error:', error);
+                }
+            } catch (audioErr) {
+                console.warn('[Audio] Proceeding without microphone:', audioErr);
+                showLocalToast('Мікрофон недоступний. Ви підключені як слухач.', 'info');
+
+            }
+
+            try {
+
+                const roomState = state.livekitRoom?.state;
+                if (!state.livekitRoom || (roomState !== 'connected' && roomState !== 'connecting' && roomState !== 'reconnecting')) {
+                    updateMyConnectionStatus(connectionStates.ESTABLISHING_RTC, 'Встановлення медіа-з\'єднання...');
+                    showLocalToast('Встановлення медіа-з\'єднання...', 'info');
+                    await connectLiveKit();
+                }
+
+                updateMyConnectionStatus(connectionStates.CONNECTED, 'Готово');
+                showLocalToast('Готово до спілкування! ✅', 'success');
+
+                setTimeout(() => {
+                    const myUserItem = document.getElementById(`user-${window.currentUserId}`);
+                    if (myUserItem) {
+                        const badge = myUserItem.querySelector('.my-connection-badge');
+                        if (badge) {
+                            badge.style.animation = 'slideOutToast 0.3s ease-out forwards';
+                            setTimeout(() => badge.remove(), 300);
+                        }
+                    }
+                }, 2000);
+
+            } catch (livekitErr) {
+                console.warn('[LiveKit] Перше підключення невдале. Фоновий реконект уже працює.', livekitErr);
+            }
+
+        } catch (fatalError) {
+            updateMyConnectionStatus(connectionStates.ERROR, `Помилка: ${fatalError.message}`);
+            showLocalToast(`Помилка: ${fatalError.message}`, 'error');
+            console.error('Connection error:', fatalError);
         }
     };
 

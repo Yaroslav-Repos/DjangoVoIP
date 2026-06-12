@@ -1,7 +1,34 @@
 import { state } from './state.js';
 import { updateAudioLevelUI } from './ui.js';
+import { connectionStates, updateMyConnectionStatus, showLocalToast } from './utils.js';
+
+function processPublishedTrack(publication, participant) {
+    console.log(`[DEBUG LiveKit] Processing Track: kind=${publication.kind}, source=${publication.source}, participant=${participant.identity}`);
+
+    if (publication.source === LivekitClient.Track.Source.Unknown ||
+        publication.source === LivekitClient.Track.Source.ScreenShareAudio) {
+
+        if (!state.remoteScreenPublications[participant.identity]) {
+            state.remoteScreenPublications[participant.identity] = {};
+        }
+        state.remoteScreenPublications[participant.identity][publication.source] = publication;
+
+        if (publication.kind === LivekitClient.Track.Kind.Video) {
+            addRemoteScreenShare(publication, participant.identity);
+        }
+    } else {
+        // На звичайні мікрофони підписуємось автоматично завжди
+        publication.setSubscribed(true);
+    }
+}
 
 export async function connectLiveKit() {
+
+    if (state.livekitReconnectTimer) {
+        clearTimeout(state.livekitReconnectTimer);
+        state.livekitReconnectTimer = null;
+    }
+
     try {
         console.log('[LiveKit] Fetching token...');
         const res = await fetch(`/api/rooms/${window.roomId}/livekit-token/`);
@@ -12,128 +39,189 @@ export async function connectLiveKit() {
         const { token, livekit_url } = data;
 
 
-        state.livekitRoom = new LivekitClient.Room({
-            adaptiveStream: true,
-            dynacast: true,
-            autoSubscribe: false,
-
-            screenShareDefaults: {
-                resolution: { width: 1920, height: 1080, frameRate: 60 }
-            }
-        });
-
-        // 
-        function processPublishedTrack(publication, participant) {
-            console.log(`[DEBUG LiveKit] Processing Track: kind=${publication.kind}, source=${publication.source}, participant=${participant.identity}`);
-
-            if (publication.source === LivekitClient.Track.Source.Unknown ||
-                publication.source === LivekitClient.Track.Source.ScreenShareAudio) {
-
-                if (!state.remoteScreenPublications[participant.identity]) {
-                    state.remoteScreenPublications[participant.identity] = {};
+        if (!state.livekitRoom) {
+            state.livekitRoom = new LivekitClient.Room({
+                adaptiveStream: true,
+                dynacast: true,
+                autoSubscribe: false,
+                screenShareDefaults: {
+                    resolution: { width: 1920, height: 1080, frameRate: 60 }
                 }
-                state.remoteScreenPublications[participant.identity][publication.source] = publication;
+            });
 
-                if (publication.kind === LivekitClient.Track.Kind.Video) {
-                    addRemoteScreenShare(publication, participant.identity);
+            state.livekitRoom.on(LivekitClient.RoomEvent.Disconnected, () => {
+                console.warn('[LiveKit] Disconnected from media server.');
+                showLocalToast('Медіа-зв\'язок втрачено. Відновлюємо...', 'info');
+
+                if (state.livekitReconnectTimer) clearTimeout(state.livekitReconnectTimer);
+                state.livekitReconnectTimer = setTimeout(reconnectLiveKit, 2000);
+            });
+
+            // Подія виявлення публікації треку 
+            state.livekitRoom.on(LivekitClient.RoomEvent.TrackPublished, (publication, participant) => {
+                processPublishedTrack(publication, participant);
+            });
+
+            // Подія стріму 
+            state.livekitRoom.on(LivekitClient.RoomEvent.TrackSubscribed, (track, publication, participant) => {
+                console.log(`[DEBUG LiveKit] TrackSubscribed: kind=${track.kind}, source=${publication.source}, participant=${participant.identity}`);
+
+                if (track.kind === LivekitClient.Track.Kind.Audio) {
+                    if (publication.source === LivekitClient.Track.Source.ScreenShareAudio) {
+                        state.remoteScreenAudioTracks[participant.identity] = track;
+
+                        const winContainer = state.remoteScreenWindows[participant.identity];
+                        if (winContainer) {
+                            const videoElem = winContainer.querySelector('.stream-window-video');
+                            if (videoElem) {
+                                track.attach(videoElem);
+                                console.log(`[DEBUG ScreenAudio] Attached ScreenShareAudio on the fly.`);
+                            }
+                        }
+                    } else {
+                        attachRemoteTrack(track, participant.identity);
+                    }
                 }
-            } else {
-                // На звичайні мікрофони підписуємось автоматично завжди
-                publication.setSubscribed(true);
-            }
-        }
-
-        // Подія виявлення публікації треку 
-        state.livekitRoom.on(LivekitClient.RoomEvent.TrackPublished, (publication, participant) => {
-            processPublishedTrack(publication, participant);
-        });
-
-        // Подія стріму 
-        state.livekitRoom.on(LivekitClient.RoomEvent.TrackSubscribed, (track, publication, participant) => {
-            console.log(`[DEBUG LiveKit] TrackSubscribed: kind=${track.kind}, source=${publication.source}, participant=${participant.identity}`);
-
-            if (track.kind === LivekitClient.Track.Kind.Audio) {
-                if (publication.source === LivekitClient.Track.Source.ScreenShareAudio) {
-                    state.remoteScreenAudioTracks[participant.identity] = track;
+                else if (track.kind === LivekitClient.Track.Kind.Video && publication.source === LivekitClient.Track.Source.Unknown) {
+                    state.remoteScreenTracks[participant.identity] = track;
 
                     const winContainer = state.remoteScreenWindows[participant.identity];
                     if (winContainer) {
                         const videoElem = winContainer.querySelector('.stream-window-video');
                         if (videoElem) {
                             track.attach(videoElem);
-                            console.log(`[DEBUG ScreenAudio] Attached ScreenShareAudio on the fly.`);
+                            console.log(`[DEBUG ScreenShare] Attached ScreenShare Video on the fly.`);
                         }
                     }
-                } else {
-                    attachRemoteTrack(track, participant.identity);
                 }
-            }
-            else if (track.kind === LivekitClient.Track.Kind.Video && publication.source === LivekitClient.Track.Source.Unknown) {
-                state.remoteScreenTracks[participant.identity] = track;
+            });
 
-                const winContainer = state.remoteScreenWindows[participant.identity];
-                if (winContainer) {
-                    const videoElem = winContainer.querySelector('.stream-window-video');
-                    if (videoElem) {
-                        track.attach(videoElem);
-                        console.log(`[DEBUG ScreenShare] Attached ScreenShare Video on the fly.`);
+            // Обробка повного закриття трансляції стрімером 
+            state.livekitRoom.on(LivekitClient.RoomEvent.TrackUnpublished, (publication, participant) => {
+                console.log(`[DEBUG LiveKit] TrackUnpublished: source=${publication.source}, participant=${participant.identity}`);
+
+                if (publication.source === LivekitClient.Track.Source.Unknown ||
+                    publication.source === LivekitClient.Track.Source.ScreenShareAudio) {
+
+                    removeRemoteScreenShare(participant.identity);
+                }
+            });
+
+            // Відписка від треків 
+            state.livekitRoom.on(LivekitClient.RoomEvent.TrackUnsubscribed, (track, publication, participant) => {
+                console.log(`[DEBUG LiveKit] TrackUnsubscribed: kind=${track.kind}, source=${publication.source}`);
+
+                if (track.kind === LivekitClient.Track.Kind.Audio) {
+                    if (publication.source === LivekitClient.Track.Source.ScreenShareAudio) {
+                        delete state.remoteScreenAudioTracks[participant.identity];
+                    } else {
+                        detachRemoteTrack(participant.identity);
                     }
                 }
-            }
-        });
-
-        // Обробка повного закриття трансляції стрімером 
-        state.livekitRoom.on(LivekitClient.RoomEvent.TrackUnpublished, (publication, participant) => {
-            console.log(`[DEBUG LiveKit] TrackUnpublished: source=${publication.source}, participant=${participant.identity}`);
-
-            if (publication.source === LivekitClient.Track.Source.Unknown ||
-                publication.source === LivekitClient.Track.Source.ScreenShareAudio) {
-
-                removeRemoteScreenShare(participant.identity);
-            }
-        });
-
-        // Відписка від треків 
-        state.livekitRoom.on(LivekitClient.RoomEvent.TrackUnsubscribed, (track, publication, participant) => {
-            console.log(`[DEBUG LiveKit] TrackUnsubscribed: kind=${track.kind}, source=${publication.source}`);
-
-            if (track.kind === LivekitClient.Track.Kind.Audio) {
-                if (publication.source === LivekitClient.Track.Source.ScreenShareAudio) {
-                    delete state.remoteScreenAudioTracks[participant.identity];
-                } else {
-                    detachRemoteTrack(participant.identity);
+                else if (track.kind === LivekitClient.Track.Kind.Video && publication.source === LivekitClient.Track.Source.Unknown) {
+                    delete state.remoteScreenTracks[participant.identity];
                 }
-            }
-            else if (track.kind === LivekitClient.Track.Kind.Video && publication.source === LivekitClient.Track.Source.Unknown) {
-                delete state.remoteScreenTracks[participant.identity];
-            }
-        });
+            });
 
+        }
+        // 
+ 
         console.log('[LiveKit] Connecting to room...');
         await state.livekitRoom.connect(livekit_url, token);
         console.log('[LiveKit] Connected successfully!');
 
-        // Обробляємо користувачів та їхні треки, які ВЖЕ були в кімнаті на момент нашого заходження
+        // Обробляємо користувачів, які вже в кімнаті
         state.livekitRoom.remoteParticipants.forEach((participant) => {
             participant.trackPublications.forEach((publication) => {
                 processPublishedTrack(publication, participant);
             });
         });
 
-        if (state.localStream) {
-            const audioTrack = state.localStream.getAudioTracks()[0];
-            if (audioTrack) {
-                state.localAudioPublication = await state.livekitRoom.localParticipant.publishTrack(audioTrack);
-                console.log('[LiveKit] Local audio published');
+        if (state.isAudioReady && state.localStream) {
+            await publishLocalAudio();
+        }
 
-                if (state.isMuted) {
-                    await state.localAudioPublication.track.mute();
-                }
+
+    } catch (error) {
+        console.error('[LiveKit] Initial connection error:', error);
+
+        showLocalToast('Не вдалося встановити медіа-з\'єднання. Спроба підключення...', 'error');
+        updateMyConnectionStatus(connectionStates.ERROR, 'Помилка медіа (черга реконекту)');
+
+        if (state.livekitReconnectTimer) clearTimeout(state.livekitReconnectTimer);
+        state.livekitReconnectTimer = setTimeout(connectLiveKit, 3000);
+
+        throw error;
+    }
+}
+
+export async function reconnectLiveKit() {
+
+    if (!state.livekitRoom) {
+        connectLiveKit();
+        return;
+    }
+
+    if (state.isReconnectingLiveKit || !state.livekitRoom) return;
+    state.isReconnectingLiveKit = true;
+
+
+    updateMyConnectionStatus(connectionStates.ESTABLISHING_RTC, 'Відновлення медіа...');
+
+    try {
+        console.log('[LiveKit] Retrying connection, fetching new token...');
+        const res = await fetch(`/api/rooms/${window.roomId}/livekit-token/`);
+        if (!res.ok) throw new Error('Token fetch failed during reconnect');
+
+        const data = await res.json();
+
+        // Пробуємо під'єднатися знову
+        await state.livekitRoom.connect(data.livekit_url, data.token);
+        console.log('[LiveKit] Reconnected successfully via retry loop!');
+
+        if (state.isAudioReady && state.localStream) {
+            await publishLocalAudio();
+        }
+
+        // Повертаємо інтерфейс у повний робочий стан
+        updateMyConnectionStatus(connectionStates.CONNECTED, 'Готово');
+        showLocalToast('Медіа-зв\'язок встановлено! ✅', 'success');
+
+        // Приховуємо бейдж статусу через 2 секунди, як і при стандартному успішному старті
+        setTimeout(() => {
+            const myUserItem = document.getElementById(`user-${window.currentUserId}`);
+            if (myUserItem) {
+                const badge = myUserItem.querySelector('.my-connection-badge');
+                if (badge) badge.remove();
+            }
+        }, 2000);
+
+    } catch (error) {
+        console.error('[LiveKit] Retry connection failed:', error);
+
+        // Якщо не вийшло — ставимо статус помилки і плануємо наступну спробу через 5 секунд
+        updateMyConnectionStatus(connectionStates.ERROR, 'Помилка медіа. Наступна спроба...');
+
+        if (state.livekitReconnectTimer) clearTimeout(state.livekitReconnectTimer);
+        state.livekitReconnectTimer = setTimeout(reconnectLiveKit, 5000);
+    } finally {
+        state.isReconnectingLiveKit = false;
+    }
+}
+
+export async function publishLocalAudio() {
+    if (!state.livekitRoom || !state.localStream) return;
+    try {
+        const audioTrack = state.localStream.getAudioTracks()[0];
+        if (audioTrack) {
+            state.localAudioPublication = await state.livekitRoom.localParticipant.publishTrack(audioTrack);
+            console.log('[LiveKit] Local audio published');
+            if (state.isMuted) {
+                await state.localAudioPublication.track.mute();
             }
         }
-    } catch (error) {
-        console.error('[LiveKit] Connection error:', error);
-        throw error;
+    } catch (e) {
+        console.error('[LiveKit] Failed to publish local audio:', e);
     }
 }
 
@@ -187,7 +275,7 @@ export async function initAudio() {
         state.isAudioReady = true;
     } catch (err) {
         console.error('[Audio] Microphone error:', err);
-        alert("Будь ласка, дозвольте доступ до мікрофона!");
+        state.isAudioReady = false;
         throw err;
     }
 }

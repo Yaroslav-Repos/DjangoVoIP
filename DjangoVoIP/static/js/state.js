@@ -31,4 +31,9 @@ export const state = {
     localAudioPublication: null, 
     remoteScreenPublications: {}, 
 
+    wsReconnectAttempts: 0,
+    maxWsReconnects: 3,
+    isReconnectingLiveKit: false,
+    livekitReconnectTimer: null
+
 };
