@@ -1084,7 +1084,7 @@ form select {
 }
 
 .floating-stream-window {
-    position: fixed; /* Вікно залишається на місці при скролі */
+    position: absolute;
     top: 150px;
     left: 150px;
     width: 480px; /* Початкова ширина */
@@ -1094,10 +1094,9 @@ form select {
     background: #292b2f;
     border-radius: 8px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
-    z-index: 2000; /* Поверх усіх інших елементів, навіть модалок */
+    z-index: 9999; /* Поверх усіх інших елементів, навіть модалок */
     display: flex;
     flex-direction: column;
-    overflow: hidden;
     border: 1px solid #36393f;
 }
 

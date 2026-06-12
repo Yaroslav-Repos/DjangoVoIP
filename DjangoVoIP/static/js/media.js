@@ -575,11 +575,11 @@ function createFloatingWindow(userId, username) {
 
     const maxBtn = document.createElement('button');
     maxBtn.className = 'stream-window-btn';
-    maxBtn.innerHTML = '🔲';
+    maxBtn.innerHTML = '🗖';
 
     const closeBtn = document.createElement('button');
     closeBtn.className = 'stream-window-btn close';
-    closeBtn.innerHTML = '❌';
+    closeBtn.innerHTML = '🗙';
 
     controls.appendChild(maxBtn);
     controls.appendChild(closeBtn);
@@ -618,14 +618,14 @@ function createFloatingWindow(userId, username) {
                 width: container.style.width, height: container.style.height
             };
             container.classList.add('maximized');
-            maxBtn.innerHTML = '🔳';
+            maxBtn.innerHTML = '⿻';
         } else {
             container.classList.remove('maximized');
             container.style.top = preMaxState.top;
             container.style.left = preMaxState.left;
             container.style.width = preMaxState.width;
             container.style.height = preMaxState.height;
-            maxBtn.innerHTML = '🔲';
+            maxBtn.innerHTML = '🗖';
         }
         isMaximized = !isMaximized;
     };
@@ -706,6 +706,34 @@ function createFloatingWindow(userId, username) {
         document.removeEventListener('pointermove', onPointerMoveResize);
         document.removeEventListener('pointerup', onPointerUpResize);
     }
+
+    const pipBtn = document.createElement('button');
+    pipBtn.innerText = '🖥️'; 
+
+    controls.appendChild(pipBtn);
+
+    pipBtn.onclick = async () => {
+        try {
+            if (document.pictureInPictureElement) {
+                await document.exitPictureInPicture();
+            } else {
+                await video.requestPictureInPicture();
+            }
+        } catch (error) {
+            console.error("Помилка PiP:", error);
+        }
+    };
+
+    
+    video.addEventListener('enterpictureinpicture', () => {
+        pipBtn.innerText = '🔙'; 
+        container.style.opacity = '0.5'; 
+    });
+
+    video.addEventListener('leavepictureinpicture', () => {
+        pipBtn.innerText = '🖥️';
+        container.style.opacity = '1';
+    });
 
     return { winContainer: container, videoElem: video };
 }
