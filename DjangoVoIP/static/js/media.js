@@ -13,16 +13,20 @@ export async function connectLiveKit() {
 
 
         state.livekitRoom = new LivekitClient.Room({
-            adaptiveStream: false,
+            adaptiveStream: true,
             dynacast: true,
-            autoSubscribe: false
+            autoSubscribe: false,
+
+            screenShareDefaults: {
+                resolution: { width: 1920, height: 1080, frameRate: 60 }
+            }
         });
 
         // 
         function processPublishedTrack(publication, participant) {
             console.log(`[DEBUG LiveKit] Processing Track: kind=${publication.kind}, source=${publication.source}, participant=${participant.identity}`);
 
-            if (publication.source === LivekitClient.Track.Source.ScreenShare ||
+            if (publication.source === LivekitClient.Track.Source.Unknown ||
                 publication.source === LivekitClient.Track.Source.ScreenShareAudio) {
 
                 if (!state.remoteScreenPublications[participant.identity]) {
@@ -64,7 +68,7 @@ export async function connectLiveKit() {
                     attachRemoteTrack(track, participant.identity);
                 }
             }
-            else if (track.kind === LivekitClient.Track.Kind.Video && publication.source === LivekitClient.Track.Source.ScreenShare) {
+            else if (track.kind === LivekitClient.Track.Kind.Video && publication.source === LivekitClient.Track.Source.Unknown) {
                 state.remoteScreenTracks[participant.identity] = track;
 
                 const winContainer = state.remoteScreenWindows[participant.identity];
@@ -82,7 +86,7 @@ export async function connectLiveKit() {
         state.livekitRoom.on(LivekitClient.RoomEvent.TrackUnpublished, (publication, participant) => {
             console.log(`[DEBUG LiveKit] TrackUnpublished: source=${publication.source}, participant=${participant.identity}`);
 
-            if (publication.source === LivekitClient.Track.Source.ScreenShare ||
+            if (publication.source === LivekitClient.Track.Source.Unknown ||
                 publication.source === LivekitClient.Track.Source.ScreenShareAudio) {
 
                 removeRemoteScreenShare(participant.identity);
@@ -100,7 +104,7 @@ export async function connectLiveKit() {
                     detachRemoteTrack(participant.identity);
                 }
             }
-            else if (track.kind === LivekitClient.Track.Kind.Video && publication.source === LivekitClient.Track.Source.ScreenShare) {
+            else if (track.kind === LivekitClient.Track.Kind.Video && publication.source === LivekitClient.Track.Source.Unknown) {
                 delete state.remoteScreenTracks[participant.identity];
             }
         });
@@ -266,13 +270,13 @@ export async function startScreenShare() {
     let displayConstraints = {
         width: { ideal: 1920 },
         height: { ideal: 1080 },
-        frameRate: { ideal: 60 }
+        frameRate: { ideal: 60, max: 60 }
     };
 
     if (quality === '720p') {
-        displayConstraints = { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } };
+        displayConstraints = { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30, max: 30 } };
     } else if (quality === '480p') {
-        displayConstraints = { width: { ideal: 854 }, height: { ideal: 480 }, frameRate: { ideal: 15 } };
+        displayConstraints = { width: { ideal: 854 }, height: { ideal: 480 }, frameRate: { ideal: 15, max: 15 } };
     }
 
     try {
@@ -285,7 +289,14 @@ export async function startScreenShare() {
         const videoTrack = state.localScreenStream.getVideoTracks()[0];
         const audioTrack = state.localScreenStream.getAudioTracks()[0];
 
+        console.log(videoTrack.getSettings().frameRate);
+
         if (videoTrack) {
+
+            if ('contentHint' in videoTrack) {
+                videoTrack.contentHint = 'motion';
+            }
+
             let trackConstraints = {};
 
             if (quality === '1080p') {
@@ -322,18 +333,30 @@ export async function startScreenShare() {
 
         if (!state.livekitRoom) throw new Error("LiveKit кімната ще не готова.");
 
+        const baseEncoding = quality === '1080p' ? LivekitClient.VideoPresets.h1080.encoding :
+            quality === '720p' ? LivekitClient.VideoPresets.h720.encoding :
+                LivekitClient.VideoPresets.h540.encoding;
+
+        if (videoTrack.readyState === 'ended') {
+            console.error("Помилка: Ви намагаєтеся опублікувати вже закритий трек!");
+            return;
+        }
+
         state.localScreenPublication = await state.livekitRoom.localParticipant.publishTrack(videoTrack, {
             name: 'screen',
-            source: LivekitClient.Track.Source.ScreenShare,
+            source: LivekitClient.Track.Source.Unknown,
+
             videoCodec: 'h264',
-   
+            simulcast: false,
+
             videoEncoding: {
-                maxBitrate: quality === '1080p' ? 4_500_000 : (quality === '720p' ? 2_500_000 : 1_000_000),
-                maxFramerate: quality === '1080p' ? 60 : (quality === '720p' ? 30 : 15),
-                priority: 'high' 
+                maxBitrate: 30_000_000,
+                maxFramerate: 60,
+                scalabilityMode: 'L1T1',
+                priority: 'high'
             },
             dtx: false
-        })
+        });
 
         if (audioTrack) {
             state.localScreenAudioPublication = await state.livekitRoom.localParticipant.publishTrack(audioTrack, {
@@ -350,24 +373,24 @@ export async function startScreenShare() {
             btn.style.background = "#f04747";
         }
 
-        const win = window.open("", "_blank", "width=800,height=600,scrollbars=no,resizable=yes");
-        if (win) {
-            win.document.title = "Ваша трансляція екрану";
-            win.document.body.style.cssText = "margin: 0; background-color: #000; display: flex; align-items: center; justify-content: center; height: 100vh; overflow: hidden;";
+        // const win = window.open("", "_blank", "width=800,height=600,scrollbars=no,resizable=yes");
+        // if (win) {
+        //     win.document.title = "Ваша трансляція екрану";
+        //     win.document.body.style.cssText = "margin: 0; background-color: #000; display: flex; align-items: center; justify-content: center; height: 100vh; overflow: hidden;";
 
-            const video = win.document.createElement('video');
-            video.autoplay = true;
-            video.playsInline = true;
-            video.muted = true;
-            video.controls = true;
-            video.style.cssText = "max-width: 100%; max-height: 100%; object-fit: contain; outline: none;";
-            win.document.body.appendChild(video);
+        //     const video = win.document.createElement('video');
+        //     video.autoplay = true;
+        //     video.playsInline = true;
+        //     video.muted = true;
+        //     video.controls = true;
+        //     video.style.cssText = "max-width: 100%; max-height: 100%; object-fit: contain; outline: none;";
+        //     win.document.body.appendChild(video);
 
-            video.srcObject = state.localScreenStream;
-            state.localScreenWindow = win;
+        //     video.srcObject = state.localScreenStream;
+        //     state.localScreenWindow = win;
 
-            win.onbeforeunload = () => { if (state.isSharingScreen) stopScreenShare(); };
-        }
+        //     win.onbeforeunload = () => { if (state.isSharingScreen) stopScreenShare(); };
+        // }
 
     } catch (error) {
         console.error('[ScreenShare] Помилка:', error);
@@ -377,27 +400,30 @@ export async function startScreenShare() {
 
 export async function stopScreenShare() {
     if (!state.isSharingScreen) return;
-    state.isSharingScreen = false;
 
-    if (state.localScreenWindow && !state.localScreenWindow.closed) {
-        state.localScreenWindow.onbeforeunload = null;
-        state.localScreenWindow.close();
-    }
-    state.localScreenWindow = null;
-
-    if (state.localScreenPublication) {
-        try { await state.livekitRoom.localParticipant.unpublishTrack(state.localScreenPublication.track); } catch (e) { console.error(e); }
-        state.localScreenPublication = null;
-    }
-
-    if (state.localScreenAudioPublication) {
-        try { await state.livekitRoom.localParticipant.unpublishTrack(state.localScreenAudioPublication.track); } catch (e) { console.error(e); }
-        state.localScreenAudioPublication = null;
-    }
+    // if (state.localScreenWindow && !state.localScreenWindow.closed) {
+    //     state.localScreenWindow.onbeforeunload = null;
+    //     state.localScreenWindow.close();
+    // }
+    // state.localScreenWindow = null;
 
     if (state.localScreenStream) {
         state.localScreenStream.getTracks().forEach(t => t.stop());
         state.localScreenStream = null;
+    }
+
+    if (state.localScreenPublication) {
+        try {
+            await state.livekitRoom.localParticipant.unpublishTrack(state.localScreenPublication.track);
+        } catch (e) { console.error("Unpublish error:", e); }
+        state.localScreenPublication = null;
+    }
+
+    if (state.localScreenAudioPublication) {
+        try {
+            await state.livekitRoom.localParticipant.unpublishTrack(state.localScreenAudioPublication.track);
+        } catch (e) { console.error("Audio unpublish error:", e); }
+        state.localScreenAudioPublication = null;
     }
 
     const btn = document.getElementById('screenshare-btn');
@@ -405,6 +431,8 @@ export async function stopScreenShare() {
         btn.innerText = "🖥️ Почати трансляцію";
         btn.style.background = "#5865f2";
     }
+    state.isSharingScreen = false;
+    console.log('[DEBUG] Screen share stopped and resources cleaned.');
 }
 
 // Викликається при виявленні публікації (тільки малює інтерфейс)
@@ -461,7 +489,7 @@ export function openRemoteScreenWindow(userId) {
     }
 
     const userPubs = state.remoteScreenPublications[userId];
-    if (!userPubs || !userPubs[LivekitClient.Track.Source.ScreenShare]) {
+    if (!userPubs || !userPubs[LivekitClient.Track.Source.Unknown]) {
         return alert("Трансляція більше недоступна");
     }
 
@@ -474,7 +502,7 @@ export function openRemoteScreenWindow(userId) {
 
     // Даємо команду SFU: "Я хочу отримувати ці дані"
     console.log(`[LiveKit] On-demand subscribing for user: ${userId}`);
-    userPubs[LivekitClient.Track.Source.ScreenShare].setSubscribed(true);
+    userPubs[LivekitClient.Track.Source.Unknown].setSubscribed(true);
 
     if (userPubs[LivekitClient.Track.Source.ScreenShareAudio]) {
         userPubs[LivekitClient.Track.Source.ScreenShareAudio].setSubscribed(true);
@@ -503,8 +531,8 @@ function closeRemoteScreenWindow(userId) {
         const userPubs = state.remoteScreenPublications[userId];
         if (userPubs) {
             try {
-                if (userPubs[LivekitClient.Track.Source.ScreenShare]) {
-                    userPubs[LivekitClient.Track.Source.ScreenShare].setSubscribed(false);
+                if (userPubs[LivekitClient.Track.Source.Unknown]) {
+                    userPubs[LivekitClient.Track.Source.Unknown].setSubscribed(false);
                 }
             } catch (e) {
                 console.warn('[LiveKit] Video unsubscribe failed (track might be already dead):', e);

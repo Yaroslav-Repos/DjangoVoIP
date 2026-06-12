@@ -123,7 +123,7 @@ export function initWebSocket() {
                 // Якщо LiveKit підключився раніше, ніж WebSocket намалював юзера,
                 // публікація вже лежить у стейті, але кнопки в DOM ще немає. Малюємо її:
                 if (state.remoteScreenPublications[payload.user_id]) {
-                    const screenVideoPub = state.remoteScreenPublications[payload.user_id][LivekitClient.Track.Source.ScreenShare];
+                    const screenVideoPub = state.remoteScreenPublications[payload.user_id][LivekitClient.Track.Source.Unknown];
                     if (screenVideoPub) {
                         addRemoteScreenShare(screenVideoPub, payload.user_id);
                     }
