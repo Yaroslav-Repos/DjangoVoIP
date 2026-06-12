@@ -1,6 +1,6 @@
 import { state } from './state.js';
 import { updateAudioLevelUI } from './ui.js';
-import { connectionStates, updateMyConnectionStatus, showLocalToast } from './utils.js';
+import { connectionStates, updateMyConnectionStatus, showLocalToast, clearMyConnectionStatus } from './utils.js';
 
 function processPublishedTrack(publication, participant) {
     console.log(`[DEBUG LiveKit] Processing Track: kind=${publication.kind}, source=${publication.source}, participant=${participant.identity}`);
@@ -130,6 +130,10 @@ export async function connectLiveKit() {
         await state.livekitRoom.connect(livekit_url, token);
         console.log('[LiveKit] Connected successfully!');
 
+        updateMyConnectionStatus(connectionStates.CONNECTED, 'Готово');
+        showLocalToast('Медіа-зв\'язок встановлено! ✅', 'success');
+        clearMyConnectionStatus();
+
         // Обробляємо користувачів, які вже в кімнаті
         state.livekitRoom.remoteParticipants.forEach((participant) => {
             participant.trackPublications.forEach((publication) => {
@@ -149,7 +153,7 @@ export async function connectLiveKit() {
         updateMyConnectionStatus(connectionStates.ERROR, 'Помилка медіа (черга реконекту)');
 
         if (state.livekitReconnectTimer) clearTimeout(state.livekitReconnectTimer);
-        state.livekitReconnectTimer = setTimeout(connectLiveKit, 3000);
+        state.livekitReconnectTimer = setTimeout(connectLiveKit, 7000);
 
         throw error;
     }
@@ -187,14 +191,7 @@ export async function reconnectLiveKit() {
         updateMyConnectionStatus(connectionStates.CONNECTED, 'Готово');
         showLocalToast('Медіа-зв\'язок встановлено! ✅', 'success');
 
-        // Приховуємо бейдж статусу через 2 секунди, як і при стандартному успішному старті
-        setTimeout(() => {
-            const myUserItem = document.getElementById(`user-${window.currentUserId}`);
-            if (myUserItem) {
-                const badge = myUserItem.querySelector('.my-connection-badge');
-                if (badge) badge.remove();
-            }
-        }, 2000);
+        clearMyConnectionStatus();
 
     } catch (error) {
         console.error('[LiveKit] Retry connection failed:', error);
@@ -269,7 +266,6 @@ export async function initAudio() {
         }
 
         startAudioLevelMonitoring();
-        startAudioKeepAlive();
         startAudioContextResumeChecker();
 
         state.isAudioReady = true;
@@ -281,12 +277,21 @@ export async function initAudio() {
 }
 
 function startAudioLevelMonitoring() {
+
+    const dataArray = new Uint8Array(state.analyser.frequencyBinCount);
+
     function monitorAudioLevel() {
         if (state.audioContext && state.audioContext.state === 'running' && state.analyser) {
             try {
-                const dataArray = new Uint8Array(state.analyser.frequencyBinCount);
+
                 state.analyser.getByteFrequencyData(dataArray);
-                const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
+
+                let sum = 0;
+                for (let i = 0; i < dataArray.length; i++) {
+                    sum += dataArray[i];
+                }
+                const average = sum / dataArray.length;
+
                 updateAudioLevelUI(average);
             } catch (err) {
                 console.warn('[Audio] Error in level monitoring:', err);
@@ -295,10 +300,6 @@ function startAudioLevelMonitoring() {
         state.animationFrameId = requestAnimationFrame(monitorAudioLevel);
     }
     monitorAudioLevel();
-}
-
-function startAudioKeepAlive() {
-    state.monitoringInterval = setInterval(() => { }, 5000);
 }
 
 function startAudioContextResumeChecker() {
@@ -435,15 +436,15 @@ export async function startScreenShare() {
             source: LivekitClient.Track.Source.Unknown,
 
             videoCodec: 'h264',
-            simulcast: false,
+            simulcast: true,
 
             videoEncoding: {
-                maxBitrate: 30_000_000,
-                maxFramerate: 60,
+                maxBitrate: 20_000_000,
+                maxFramerate: quality === '1080p' ? 60 : quality === '720p' ? 30 : 15,
                 scalabilityMode: 'L1T1',
                 priority: 'high'
             },
-            dtx: false
+            dtx: true
         });
 
         if (audioTrack) {

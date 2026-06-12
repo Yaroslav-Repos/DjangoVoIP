@@ -3,21 +3,40 @@ import { state } from './state.js';
 import { getCookie } from './utils.js';
 import { loadMoreMessages } from './chat.js';
 
+let audioLevelTextEl = null;
+let audioLevelIndicatorEl = null;
+let lastPercentage = -1; // Зберігаємо останнє значення
+
 export function updateAudioLevelUI(level) {
-    const audioLevelText = document.getElementById('audio-level-text');
-    if (audioLevelText) {
-        audioLevelText.textContent = Math.round((level / 255) * 100) + '%';
-    }
+    // Ініціалізуємо кеш при першому виклику
+    if (!audioLevelTextEl) audioLevelTextEl = document.getElementById('audio-level-text');
+    if (!audioLevelIndicatorEl) audioLevelIndicatorEl = document.getElementById('audio-level-indicator');
 
-    const audioLevelIndicator = document.getElementById('audio-level-indicator');
-    if (audioLevelIndicator) {
-        const percentage = Math.min(100, (level / 255) * 100);
-        audioLevelIndicator.style.width = percentage + '%';
+    if (!audioLevelTextEl || !audioLevelIndicatorEl) return;
 
-        if (percentage < 20) audioLevelIndicator.style.background = '#72767d';
-        else if (percentage < 50) audioLevelIndicator.style.background = '#43b581';
-        else if (percentage < 80) audioLevelIndicator.style.background = '#faa61a';
-        else audioLevelIndicator.style.background = '#f04747';
+    // Округлюємо відсоток одразу, щоб уникнути зайвих мікро-оновлень
+    const percentage = Math.round(Math.min(100, (level / 255) * 100));
+
+    // Якщо значення не змінилося з минулого кадру — нічого не робимо
+    if (percentage === lastPercentage) return;
+    lastPercentage = percentage;
+
+    // Оновлюємо текст
+    audioLevelTextEl.textContent = percentage + '%';
+
+    // Оптимізація рендерингу: використовуємо transform замість width
+    // Важливо: у CSS для цього індикатора має бути задано 'transform-origin: left;'
+    audioLevelIndicatorEl.style.transform = `scaleX(${percentage / 100})`;
+
+    // Оновлення кольору
+    if (percentage < 20) {
+        audioLevelIndicatorEl.style.backgroundColor = '#72767d';
+    } else if (percentage < 50) {
+        audioLevelIndicatorEl.style.backgroundColor = '#43b581';
+    } else if (percentage < 80) {
+        audioLevelIndicatorEl.style.backgroundColor = '#faa61a';
+    } else {
+        audioLevelIndicatorEl.style.backgroundColor = '#f04747';
     }
 }
 
