@@ -232,7 +232,10 @@ export async function publishLocalAudio() {
     try {
         const audioTrack = state.localStream.getAudioTracks()[0];
         if (audioTrack) {
-            state.localAudioPublication = await state.livekitRoom.localParticipant.publishTrack(audioTrack);
+            state.localAudioPublication = await state.livekitRoom.localParticipant.publishTrack(audioTrack, {
+                source: LivekitClient.Track.Source.Microphone,
+                name: 'mic-audio'
+            });
             console.log('[LiveKit] Local audio published');
             if (state.isMuted) {
                 await state.localAudioPublication.track.mute();
