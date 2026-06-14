@@ -205,6 +205,17 @@ form select {
         background: #4752c4;
     }
 
+.user-avatar {
+    transition: box-shadow 0.2s ease, border 0.2s ease;
+    border: 2px solid transparent;
+}
+
+    .user-avatar.is-speaking {
+        /* Налаштуйте колір під ваш дизайн */
+        border-color: #43b581;
+        box-shadow: 0 0 10px #43b581;
+    }
+
 /* ==========================================================================
    4. MODALS & ALERTS
    ========================================================================== */

@@ -7,6 +7,8 @@ let audioLevelTextEl = null;
 let audioLevelIndicatorEl = null;
 let lastPercentage = -1; // Зберігаємо останнє значення
 
+let isInitialized = false;
+
 export function updateAudioLevelUI(level) {
     // Ініціалізуємо кеш при першому виклику
     if (!audioLevelTextEl) audioLevelTextEl = document.getElementById('audio-level-text');
@@ -91,6 +93,9 @@ export function hideVolumeContext() {
 }
 
 export function initializeEventListeners() {
+
+    if (isInitialized) return;
+    isInitialized = true;
 
     const muteBtn = document.getElementById('mute-btn');
     if (muteBtn) {

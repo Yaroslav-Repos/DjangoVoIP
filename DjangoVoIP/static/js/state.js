@@ -34,6 +34,6 @@ export const state = {
     wsReconnectAttempts: 0,
     maxWsReconnects: 3,
     isReconnectingLiveKit: false,
-    livekitReconnectTimer: null
-
+    livekitReconnectTimer: null,
+    isConnecting: false
 };

@@ -29,6 +29,12 @@ export async function connectLiveKit() {
         state.livekitReconnectTimer = null;
     }
 
+    if (state.isConnecting || (state.livekitRoom && state.livekitRoom.state === 'connected')) {
+        return;
+    }
+
+    state.isConnecting = true; 
+
     try {
         console.log('[LiveKit] Fetching token...');
         const res = await fetch(`/api/rooms/${window.roomId}/livekit-token/`);
@@ -38,6 +44,11 @@ export async function connectLiveKit() {
         const data = await res.json();
         const { token, livekit_url } = data;
 
+        if (state.livekitRoom) {
+            console.log('[LiveKit] Cleaning up old room instance before re-connecting');
+            state.livekitRoom.disconnect();
+            state.livekitRoom = null;
+        }
 
         if (!state.livekitRoom) {
             state.livekitRoom = new LivekitClient.Room({
@@ -55,6 +66,11 @@ export async function connectLiveKit() {
 
                 if (state.livekitReconnectTimer) clearTimeout(state.livekitReconnectTimer);
                 state.livekitReconnectTimer = setTimeout(reconnectLiveKit, 2000);
+            });
+
+            // Подія зміни активних спікерів (для індикації хто говорить)
+            state.livekitRoom.on(LivekitClient.RoomEvent.ActiveSpeakersChanged, (speakers) => {
+                handleActiveSpeakers(speakers);
             });
 
             // Подія виявлення публікації треку 
@@ -157,53 +173,58 @@ export async function connectLiveKit() {
 
         throw error;
     }
+    finally {
+        state.isConnecting = false; 
+    }
+
 }
+
 
 export async function reconnectLiveKit() {
 
-    if (!state.livekitRoom) {
-        connectLiveKit();
-        return;
+    if (state.isReconnectingLiveKit || state.isConnecting) return;
+
+    state.isReconnectingLiveKit = true;
+    updateMyConnectionStatus(connectionStates.ESTABLISHING_RTC, 'Перепідключення...');
+
+    console.log('[LiveKit] Reconnect triggered, cleaning up...');
+
+    if (state.livekitRoom) {
+        await state.livekitRoom.disconnect();
+        state.livekitRoom = null;
     }
 
-    if (state.isReconnectingLiveKit || !state.livekitRoom) return;
-    state.isReconnectingLiveKit = true;
-
-
-    updateMyConnectionStatus(connectionStates.ESTABLISHING_RTC, 'Відновлення медіа...');
-
     try {
-        console.log('[LiveKit] Retrying connection, fetching new token...');
-        const res = await fetch(`/api/rooms/${window.roomId}/livekit-token/`);
-        if (!res.ok) throw new Error('Token fetch failed during reconnect');
 
-        const data = await res.json();
+        await connectLiveKit();
 
-        // Пробуємо під'єднатися знову
-        await state.livekitRoom.connect(data.livekit_url, data.token);
-        console.log('[LiveKit] Reconnected successfully via retry loop!');
-
-        if (state.isAudioReady && state.localStream) {
-            await publishLocalAudio();
-        }
-
-        // Повертаємо інтерфейс у повний робочий стан
-        updateMyConnectionStatus(connectionStates.CONNECTED, 'Готово');
-        showLocalToast('Медіа-зв\'язок встановлено! ✅', 'success');
-
+        updateMyConnectionStatus(connectionStates.CONNECTED, 'Відновлено ✅');
         clearMyConnectionStatus();
-
     } catch (error) {
-        console.error('[LiveKit] Retry connection failed:', error);
-
-        // Якщо не вийшло — ставимо статус помилки і плануємо наступну спробу через 5 секунд
-        updateMyConnectionStatus(connectionStates.ERROR, 'Помилка медіа. Наступна спроба...');
+        console.error('[LiveKit] Reconnect failed:', error);
 
         if (state.livekitReconnectTimer) clearTimeout(state.livekitReconnectTimer);
         state.livekitReconnectTimer = setTimeout(reconnectLiveKit, 5000);
     } finally {
         state.isReconnectingLiveKit = false;
     }
+}
+
+function handleActiveSpeakers(speakers) {
+
+    document.querySelectorAll('.user-avatar').forEach(el => {
+        el.classList.remove('is-speaking');
+    });
+
+    speakers.forEach(speaker => {
+        const userItem = document.getElementById(`user-${speaker.identity}`);
+        if (userItem) {
+            const avatar = userItem.querySelector('.user-avatar');
+            if (avatar) {
+                avatar.classList.add('is-speaking');
+            }
+        }
+    });
 }
 
 export async function publishLocalAudio() {
@@ -312,6 +333,7 @@ function startAudioContextResumeChecker() {
 
 export function cleanupAudioMonitoring() {
     if (state.animationFrameId) cancelAnimationFrame(state.animationFrameId);
+    state.animationFrameId = null;
     if (state.monitoringInterval) clearInterval(state.monitoringInterval);
     if (state.audioContextResumeInterval) clearInterval(state.audioContextResumeInterval);
 
@@ -856,6 +878,12 @@ export function initScreenShareListeners() {
     }
 
     window.addEventListener('beforeunload', () => {
+
+        cleanupAudioMonitoring();
+        if (state.chatSocket) {
+            state.chatSocket.close();
+        }
+
         if (state.localScreenWindow && !state.localScreenWindow.closed) {
             state.localScreenWindow.close();
         }
