@@ -139,6 +139,15 @@ export async function connectLiveKit() {
                 }
             });
 
+            // Видаляємо всі треки, якщо вони зависли
+            state.livekitRoom.on(LivekitClient.RoomEvent.ParticipantDisconnected, (participant) => {
+                console.log(`[DEBUG LiveKit] Participant Disconnected: ${participant.identity}`);
+                removeRemoteScreenShare(participant.identity);
+                
+                delete state.remoteScreenTracks[participant.identity];
+                delete state.remoteScreenAudioTracks[participant.identity];
+            });
+
         }
         // 
  
@@ -635,6 +644,9 @@ function closeRemoteScreenWindow(userId) {
 
     const winContainer = state.remoteScreenWindows[userId];
     if (winContainer) {
+
+        document.dispatchEvent(new Event('pointerup'));
+
         console.log(`[DEBUG ScreenShare] Unsubscribing screen streams for user: ${userId}`);
         const videoElem = winContainer.querySelector('.stream-window-video');
 

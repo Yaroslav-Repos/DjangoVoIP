@@ -44,6 +44,11 @@ export function initWebSocket() {
 
         state.wsReconnectAttempts = 0;
 
+        state.chatMessagesPage = 1;
+        state.chatMessagesHasMore = false;
+        state.isLoadingMessages = false;
+        document.getElementById('chat-box').innerHTML = '';
+
         console.log('WebSocket connected');
         updateMyConnectionStatus(connectionStates.CONNECTING, 'Підключення...');
         showLocalToast('Підключення до серверу...', 'info');
@@ -178,6 +183,15 @@ export function initWebSocket() {
             if (li) li.remove();
             delete state.connectedUsers[payload.user_id];
             detachRemoteTrack(payload.user_id);
+
+            delete state.audioVolumeMap[payload.user_id];
+            delete state.volumeBeforeMute[payload.user_id];
+
+            if (state.remoteScreenWindows && state.remoteScreenWindows[payload.user_id]) {
+                import { removeRemoteScreenShare } from './media.js';
+                removeRemoteScreenShare(payload.user_id);
+            }
+
         }
     }
 
