@@ -125,7 +125,7 @@
                 {% block header_menu %}{% endblock %}
             </div>
 
-            <div class="header-right" style="display: flex; align-items: center; gap: 10px;">
+            <div class="header-right" style="display: flex; align-items: center; gap: 18px;">
 
                 <div class="gtranslate_wrapper"></div>
 
@@ -153,6 +153,13 @@
         const cleanGTranslate = () => {
             const wrapper = document.querySelector('.gtranslate_wrapper');
             if (wrapper && wrapper.innerHTML.trim() !== "") {
+
+                const gt_switcher = wrapper.querySelector('.gt_switcher');
+                if (gt_switcher) {
+                    gt_switcher.style.setProperty('width', '125%', 'important');
+                }
+
+
 
                 const switcherWrapper = wrapper.querySelector('.gt_switcher_wrapper');
                 if (switcherWrapper) {
