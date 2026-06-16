@@ -2,6 +2,11 @@ import { state } from './state.js';
 import { updateAudioLevelUI } from './ui.js';
 import { connectionStates, updateMyConnectionStatus, showLocalToast, clearMyConnectionStatus } from './utils.js';
 
+import { 
+    recalculateVisibleCameras, 
+    updateSpeakerHighlights 
+} from './cameras.js';
+
 function processPublishedTrack(publication, participant) {
     console.log(`[DEBUG LiveKit] Processing Track: kind=${publication.kind}, source=${publication.source}, participant=${participant.identity}`);
 
