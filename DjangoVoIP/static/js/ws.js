@@ -1,7 +1,7 @@
 
 import { state } from './state.js';
 import { connectionStates, updateMyConnectionStatus, showLocalToast, formatDate } from './utils.js';
-import { initAudio, connectLiveKit, detachRemoteTrack, addRemoteScreenShare } from './media.js';
+import { initAudio, connectLiveKit, detachRemoteTrack, addRemoteScreenShare, removeRemoteScreenShare } from './media.js';
 import { loadChatHistory } from './chat.js';
 
 
@@ -73,9 +73,9 @@ export function initWebSocket() {
 
                 }
             } catch (audioErr) {
-                console.warn('[Audio] Proceeding without microphone:', audioErr);
+                console.warn('[Audio] Proceeding without microphone (Listener Mode):', audioErr);
                 showLocalToast('Мікрофон недоступний. Ви підключені як слухач.', 'info');
-
+                state.isAudioReady = false; 
             }
 
             try {
@@ -188,7 +188,6 @@ export function initWebSocket() {
             delete state.volumeBeforeMute[payload.user_id];
 
             if (state.remoteScreenWindows && state.remoteScreenWindows[payload.user_id]) {
-                import { removeRemoteScreenShare } from './media.js';
                 removeRemoteScreenShare(payload.user_id);
             }
 

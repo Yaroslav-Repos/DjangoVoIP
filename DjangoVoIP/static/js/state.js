@@ -35,5 +35,9 @@ export const state = {
     maxWsReconnects: 3,
     isReconnectingLiveKit: false,
     livekitReconnectTimer: null,
-    isConnecting: false
+    isConnecting: false,
+
+    isCameraGalleryOpen: false,
+    cameraGalleryWindow: null,
+    activeSpeakers: [],
 };

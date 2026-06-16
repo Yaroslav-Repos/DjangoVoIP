@@ -3,6 +3,8 @@ import { state } from './state.js';
 import { getCookie } from './utils.js';
 import { loadMoreMessages } from './chat.js';
 
+import {showLocalToast} from './utils.js';
+
 let audioLevelTextEl = null;
 let audioLevelIndicatorEl = null;
 let lastPercentage = -1; // Зберігаємо останнє значення

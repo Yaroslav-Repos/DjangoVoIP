@@ -463,6 +463,9 @@ form select {
     border-radius: 12px;
     padding: 20px;
     margin-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    height: auto !important;
 }
 
     .section h2 {
@@ -474,8 +477,9 @@ form select {
 
 .room-list {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
     gap: 12px;
+    width: 100%;
 }
 
 .room-card {
@@ -1242,4 +1246,13 @@ form select {
         box-sizing: border-box;
         height: 500px;
     }
+
+    .menu-container, .container {
+        height: auto !important;
+    }
+
+    .room-list {
+        grid-template-columns: 1fr !important;
+    }
+
 }

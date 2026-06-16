@@ -2,16 +2,121 @@
 <!DOCTYPE html>
 <html lang="uk">
 <head>
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DjangoVoIP - Voice Chat</title>
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
     {% block extra_css %}{% endblock %}
+
+    <style>
+
+        .gtranslate_wrapper {
+            position: relative !important;
+            display: inline-flex !important;
+            align-items: center !important;
+        }
+
+        .gt_switcher_wrapper {
+            position: relative !important;
+            top: auto !important;
+            left: auto !important;
+            right: auto !important;
+            bottom: auto !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            width: max-content !important;
+            min-width: unset !important;
+        }
+
+            .gt_switcher_wrapper .gt_selected {
+                background: #36393f !important;
+                border: 1px solid #202225 !important;
+                border-radius: 6px !important;
+                padding: 6px 10px !important;
+                display: inline-flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                cursor: pointer !important;
+                width: max-content !important;
+                min-width: unset !important;
+                box-shadow: none !important;
+                height: 38px !important;
+            }
+
+                .gt_switcher_wrapper .gt_selected:hover {
+                    border-color: #5865f2 !important; 
+                }
+
+                .gt_switcher_wrapper .gt_selected a span,
+                .gt_switcher_wrapper .gt_option a span {
+                    display: none !important;
+                }
+
+                .gt_switcher_wrapper .gt_selected .gt_arrow {
+                    display: none !important;
+                }
+
+            .gt_switcher_wrapper .gt_option {
+                position: absolute !important;
+                top: calc(100% + 6px) !important;
+                right: 0 !important;
+                left: auto !important;
+                background: #36393f !important;
+                border: 1px solid #2c2f33 !important;
+                border-radius: 8px !important;
+                box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4) !important;
+                padding: 4px !important;
+                min-width: unset !important;
+                width: max-content !important;
+                z-index: 999 !important;
+                display: none;
+            }
+
+                .gt_switcher_wrapper .gt_option.gt_active {
+                    display: flex !important;
+                    flex-direction: column !important;
+                    gap: 4px !important;
+                }
+
+                .gt_switcher_wrapper .gt_option a {
+                    padding: 6px 10px !important;
+                    border-radius: 4px !important;
+                    display: inline-flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    min-width: unset !important;
+                    width: auto !important;
+                }
+
+                    .gt_switcher_wrapper .gt_option a:hover {
+                        background-color: rgba(88, 101, 242, 0.15) !important;
+                    }
+
+            .gt_switcher_wrapper img {
+                margin: 0 !important;
+                padding: 0 !important;
+                display: block !important;
+                width: 24px !important;
+                height: auto !important;
+                border-radius: 2px !important;
+            }
+
+        #google_translate_element2 {
+            display: none !important;
+        }
+    </style>
+
 </head>
 <body>
     <div class="container">
         <header>
+
             <div class="header-left">
+
                 {% if request.user.is_authenticated %}
                 <div>👤 <strong>{{ request.user.username }}</strong></div>
                 {% else %}
@@ -19,15 +124,94 @@
                 {% endif %}
                 {% block header_menu %}{% endblock %}
             </div>
-            {% if request.user.is_authenticated %}
-            <form method="post" action="{% url 'logout' %}" style="display: inline; margin: 0;">
-                {% csrf_token %}
-                <button type="submit" style="background: #f04747; border: none; color: white; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500; transition: background 0.2s;">Вийти</button>
-            </form>
-            {% endif %}
+
+            <div class="header-right" style="display: flex; align-items: center; gap: 10px;">
+
+                <div class="gtranslate_wrapper"></div>
+
+                {% if request.user.is_authenticated %}
+                <form method="post" action="{% url 'logout' %}" style="display: inline; margin: 0;">
+                    {% csrf_token %}
+                    <button type="submit" ...>Вийти</button>
+                </form>
+                {% endif %}
+            </div>
+
         </header>
         {% block content %}{% endblock %}
     </div>
+
+    <script>
+        window.gtranslateSettings = {
+            "default_language": "uk",
+            "native_language_names": true,
+            "languages": ["uk", "en", "pl", "de"],
+            "wrapper_selector": ".gtranslate_wrapper",
+            "inline_mode": true
+        }
+
+        const cleanGTranslate = () => {
+            const wrapper = document.querySelector('.gtranslate_wrapper');
+            if (wrapper && wrapper.innerHTML.trim() !== "") {
+
+                const switcherWrapper = wrapper.querySelector('.gt_switcher_wrapper');
+                if (switcherWrapper) {
+                    switcherWrapper.style.setProperty('width', '46px', 'important');
+                    switcherWrapper.style.setProperty('position', 'relative', 'important');
+                    switcherWrapper.style.setProperty('bottom', 'auto', 'important');
+                    switcherWrapper.style.setProperty('left', 'auto', 'important');
+                    switcherWrapper.style.setProperty('z-index', 'auto', 'important');
+                }
+
+                const selectedBtn = wrapper.querySelector('.gt_selected');
+                if (selectedBtn) {
+                    selectedBtn.style.setProperty('width', 'auto', 'important');
+                    selectedBtn.style.setProperty('min-width', 'unset', 'important');
+                    selectedBtn.style.setProperty('max-width', 'max-content', 'important');
+                    selectedBtn.style.setProperty('height', '38px', 'important');
+                    selectedBtn.style.setProperty('background', '#36393f', 'important');
+                    selectedBtn.style.setProperty('border', '1px solid #202225', 'important');
+
+                    selectedBtn.onmouseenter = () => selectedBtn.style.setProperty('border-color', '#5865f2', 'important');
+                    selectedBtn.onmouseleave = () => selectedBtn.style.setProperty('border-color', '#202225', 'important');
+                }
+
+                const arrow = wrapper.querySelector('.gt_arrow');
+                if (arrow) arrow.style.setProperty('display', 'none', 'important');
+
+                const links = wrapper.querySelectorAll('a');
+                links.forEach(link => {
+                    link.style.setProperty('width', 'auto', 'important');
+                    link.style.setProperty('min-width', 'unset', 'important');
+
+                    Array.from(link.childNodes).forEach(node => {
+                        if (node.nodeType === Node.TEXT_NODE) {
+                            node.textContent = ''; 
+                        }
+                    });
+
+                    const spans = link.querySelectorAll('span');
+                    spans.forEach(span => span.style.setProperty('display', 'none', 'important'));
+                });
+
+                const optionMenu = wrapper.querySelector('.gt_option');
+                if (optionMenu) {
+                    optionMenu.style.setProperty('background', '#36393f', 'important');
+                    optionMenu.style.setProperty('border', '1px solid #2c2f33', 'important');
+                    optionMenu.style.setProperty('border-radius', '8px', 'important');
+                    optionMenu.style.setProperty('box-shadow', '0 8px 24px rgba(0, 0, 0, 0.4)', 'important');
+                    optionMenu.style.setProperty('padding', '4px', 'important');
+                    optionMenu.style.setProperty('min-width', 'unset', 'important');
+                    optionMenu.style.setProperty('width', 'max-content', 'important');
+                }
+            }
+        };
+
+        const gtObserver = new MutationObserver(cleanGTranslate);
+        gtObserver.observe(document.documentElement, { childList: true, subtree: true });
+    </script>
+    <script src="https://cdn.gtranslate.net/widgets/latest/dwf.js"></script>
+
 </body>
 </html>
 

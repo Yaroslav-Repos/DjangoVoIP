@@ -29,11 +29,14 @@ export async function connectLiveKit() {
         state.livekitReconnectTimer = null;
     }
 
-    if (state.isConnecting || (state.livekitRoom && state.livekitRoom.state === 'connected')) {
+    if (state.isConnecting ||
+        state.isReconnectingLiveKit ||
+        (state.livekitRoom && ['connected', 'connecting', 'reconnecting'].includes(state.livekitRoom.state))) {
+        console.log('[LiveKit] Connection already in progress or established. Skipping.');
         return;
     }
 
-    state.isConnecting = true; 
+    state.isConnecting = true;
 
     try {
         console.log('[LiveKit] Fetching token...');
@@ -193,6 +196,10 @@ export async function reconnectLiveKit() {
 
     if (state.isReconnectingLiveKit || state.isConnecting) return;
 
+    if (state.livekitRoom && state.livekitRoom.state === 'connected') {
+        return;
+    }
+
     state.isReconnectingLiveKit = true;
     updateMyConnectionStatus(connectionStates.ESTABLISHING_RTC, 'Перепідключення...');
 
@@ -288,14 +295,18 @@ export async function initAudio() {
             video: false
         });
 
-        state.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        if (!state.audioContext) {
+            state.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+
         state.mediaSource = state.audioContext.createMediaStreamSource(state.localStream);
         state.analyser = state.audioContext.createAnalyser();
         state.analyser.fftSize = 256;
         state.mediaSource.connect(state.analyser);
 
         if (state.audioContext.state === 'suspended') {
-            state.audioContext.resume().catch(e => console.warn('[Audio] Autoplay blocked resume'));
+            console.warn('[Audio] Context suspended. Waiting for user interaction.');
+            //state.audioContext.resume().catch(e => console.warn('[Audio] Autoplay blocked resume'));
         }
 
         startAudioLevelMonitoring();
