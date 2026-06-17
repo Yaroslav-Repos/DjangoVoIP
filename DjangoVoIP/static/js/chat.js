@@ -21,7 +21,7 @@ export async function loadChatHistory() {
 
                 const date =  formatDate(msg.created_at);
                 const msgHtml = `
-    <div class="message-wrapper" id="msg-${msg.id}">
+    <div class="message-wrapper notranslate" id="msg-${msg.id}">
         <small>${date}</small> <strong>${msg.user.username}:</strong> ${msg.text}
         <div class="message-options">
             ${canDelete ? `<button class="delete-msg-btn" data-id="${msg.id}" title="Видалити повідомлення">🗑️</button>` : ''}
@@ -50,7 +50,7 @@ export async function loadMoreMessages() {
 
                 const date = formatDate(msg.created_at);
                 const newMsg = `
-    <div class="message-wrapper" id="msg-${msg.id}">
+    <div class="message-wrapper notranslate" id="msg-${msg.id}">
         <small>${date}</small> <strong>${msg.user.username}:</strong> ${msg.text}
         <div class="message-options">
             ${canDelete ? `<button class="delete-msg-btn" data-id="${msg.id}" title="Видалити повідомлення">🗑️</button>` : ''}

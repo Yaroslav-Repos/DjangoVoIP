@@ -198,7 +198,7 @@ export function initWebSocket() {
         const chatBox = document.getElementById('chat-box');
 
         const wrapper = document.createElement('div');
-        wrapper.className = 'message-wrapper';
+        wrapper.className = 'message-wrapper notranslate';
         wrapper.id = `msg-${payload.message_id}`;
 
         const canDelete = (payload.sender === window.currentUsername) || state.isAdmin;
