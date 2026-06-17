@@ -1,7 +1,7 @@
 
 import { state } from './state.js';
 import { connectionStates, updateMyConnectionStatus, showLocalToast, formatDate } from './utils.js';
-import { initAudio, connectLiveKit, detachRemoteTrack, addRemoteScreenShare, removeRemoteScreenShare } from './media.js';
+import { initAudio, connectLiveKit, detachRemoteTrack, addRemoteScreenShare, removeRemoteScreenShare, cleanupAudioMonitoring } from './media.js';
 import { loadChatHistory } from './chat.js';
 
 
@@ -22,6 +22,26 @@ export function initWebSocket() {
 
     state.chatSocket.onclose = (event) => {
         console.warn('WebSocket closed', event);
+
+        if (event.code === 4409) {
+            isIntentionalClose = true;
+            state.isIntentionalDisconnect = true;
+            updateMyConnectionStatus(connectionStates.ERROR, 'Дублікат сесії');
+            showLocalToast('Ви увійшли з іншого пристрою. Цю сесію закрито.', 'error');
+            cleanupAudioMonitoring();
+            setTimeout(() => { window.location.href = '/menu/'; }, 3000);
+            return;
+        }
+
+        if (event.code === 4003) {
+            isIntentionalClose = true;
+            state.isIntentionalDisconnect = true;
+            updateMyConnectionStatus(connectionStates.ERROR, 'Доступ закрито');
+            showLocalToast('Вас було вилучено з кімнати.', 'error');
+            cleanupAudioMonitoring();
+            setTimeout(() => { window.location.href = '/menu/'; }, 3000);
+            return;
+        }
 
         if (isIntentionalClose) return;
 

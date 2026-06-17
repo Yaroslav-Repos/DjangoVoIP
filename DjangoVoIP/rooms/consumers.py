@@ -6,6 +6,8 @@ from .models import Room, RoomMembership, ChatMessage
 import time
 from django.utils.html import escape
 
+from .utils import kick_from_livekit
+
 import asyncio
 from django.core.cache import cache
 
@@ -23,6 +25,7 @@ class SpeakConsumer(AsyncWebsocketConsumer):
             return
 
         self.room_group_name = f'ts_room_{self.room_id}'
+        self.user_room_group_name = f'ts_room_{self.room_id}_user_{self.scope["user"].id}'
         self.active_users_key = f'users_{self.room_id}'
         self.user = self.scope['user']
 
@@ -33,16 +36,31 @@ class SpeakConsumer(AsyncWebsocketConsumer):
             await self.close(code=4003)
             return
 
+        await self.channel_layer.group_send(
+            self.user_room_group_name,
+            {
+                'type': 'duplicate_session_kick'
+            }
+        )
+
+        try:
+            await kick_from_livekit(self.room_id, self.user.id)
+            logger.info(f"Backend enforced LiveKit kick for user {self.user.id} in room {self.room_id}")
+        except Exception as e:
+            logger.error(f"Failed to enforce backend LiveKit kick: {e}")
+
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)
+        await self.channel_layer.group_add(self.user_room_group_name, self.channel_name)
         await self.accept()
 
         logger.info(f'User {self.user} connected to room {self.room_id}')
 
         existing_users = await self._get_active_users()
 
-        for user_id_str, username in existing_users.items():
+        for user_id_str, user_data in existing_users.items():
             user_id = int(user_id_str)
             if user_id != self.user.id:
+                username = user_data.get('username') if isinstance(user_data, dict) else user_data
                 await self.send(text_data=json.dumps({
                     'stream': 'presence',
                     'payload': {
@@ -80,9 +98,9 @@ class SpeakConsumer(AsyncWebsocketConsumer):
     async def disconnect(self, close_code):
         if hasattr(self, 'room_group_name'):
 
-            await self._remove_user_from_presence()
+            was_active_session = await self._remove_user_from_presence()
             
-            if close_code != 4004:
+            if was_active_session and close_code not in (4004, 4409):
                 await self.channel_layer.group_send(
                     self.room_group_name,
                     {
@@ -94,6 +112,8 @@ class SpeakConsumer(AsyncWebsocketConsumer):
                 )
             
             await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
+            if hasattr(self, 'user_room_group_name'):
+                await self.channel_layer.group_discard(self.user_room_group_name, self.channel_name)
             logger.info(f'User {self.user} disconnected from room {self.room_id}')
 
 
@@ -189,6 +209,8 @@ class SpeakConsumer(AsyncWebsocketConsumer):
                     }
                 )
 
+
+
     async def presence_message(self, event):
         await self.send(text_data=json.dumps({'stream': 'presence', 'payload': event}))
 
@@ -214,6 +236,12 @@ class SpeakConsumer(AsyncWebsocketConsumer):
                 'message_id': event['message_id']
             }
         }))
+    
+    async def duplicate_session_kick(self, event):
+        logger.info(f"Duplicate session for {self.user.username}. Closing old socket: {self.channel_name}")
+        await self.close(code=4409)
+
+
 
     @database_sync_to_async
     def get_room(self):
@@ -258,19 +286,21 @@ class SpeakConsumer(AsyncWebsocketConsumer):
         return await cache.aget(self.active_users_key, default={})
 
     async def _add_user_to_presence(self):
-
         lock_key = f"lock_presence_{self.room_id}"
         
-
         while not await cache.aadd(lock_key, "locked", timeout=10):
             await asyncio.sleep(0.02)
             
         try:
             active_users = await cache.aget(self.active_users_key, default={})
-            active_users[str(self.user.id)] = self.user.username
+
+            active_users[str(self.user.id)] = {
+                'username': self.user.username,
+                'channel_name': self.channel_name
+            }
             await cache.aset(self.active_users_key, active_users, timeout=86400)
         finally:
-            await cache.adelete(lock_key)  
+            await cache.adelete(lock_key) 
 
     async def _remove_user_from_presence(self):
         lock_key = f"lock_presence_{self.room_id}"
@@ -279,22 +309,26 @@ class SpeakConsumer(AsyncWebsocketConsumer):
             await asyncio.sleep(0.02)
             
         try:
-
             active_users = await cache.aget(self.active_users_key, default={})
-            active_users.pop(str(self.user.id), None)
+            user_data = active_users.get(str(self.user.id))
             
-            if active_users:
-                await cache.aset(self.active_users_key, active_users, timeout=86400)
-            else:
-                await cache.adelete(self.active_users_key)
+            if user_data and isinstance(user_data, dict) and user_data.get('channel_name') == self.channel_name:
+                active_users.pop(str(self.user.id), None)
+                
+                if active_users:
+                    await cache.aset(self.active_users_key, active_users, timeout=86400)
+                else:
+                    await cache.adelete(self.active_users_key)
 
-
-            voice_key = f"voice_states_{self.room_id}"
-            states = await cache.aget(voice_key, default={})
-            if str(self.user.id) in states:
-                del states[str(self.user.id)]
-                await cache.aset(voice_key, states, timeout=86400)
-
+                voice_key = f"voice_states_{self.room_id}"
+                states = await cache.aget(voice_key, default={})
+                if str(self.user.id) in states:
+                    del states[str(self.user.id)]
+                    await cache.aset(voice_key, states, timeout=86400)
+                
+                return True
+            
+            return False
         finally:
             await cache.adelete(lock_key)
 

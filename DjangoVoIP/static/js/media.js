@@ -81,15 +81,26 @@ export async function connectLiveKit(isFromReconnect = false) {
                 }
             });
 
-            state.livekitRoom.on(LivekitClient.RoomEvent.Disconnected, () => {
-                console.warn('[LiveKit] Disconnected from media server.');
+            state.livekitRoom.on(LivekitClient.RoomEvent.Disconnected, (reason) => {
+                console.warn('[LiveKit] Disconnected from media server. Reason:', reason);
 
                 if (state.isIntentionalDisconnect || state.isReconnectingLiveKit) return;
+
+                if (reason === LivekitClient.DisconnectReason.DuplicateIdentity) {
+                    showLocalToast('Ви підключилися до цієї кімнати з іншої вкладки або пристрою.', 'error');
+                    updateMyConnectionStatus(connectionStates.ERROR, 'Відключено (дублікат сесії)');
+
+                    if (state.livekitReconnectTimer) {
+                        clearTimeout(state.livekitReconnectTimer);
+                        state.livekitReconnectTimer = null;
+                    }
+                    return;
+                }
 
                 showLocalToast('Медіа-зв\'язок втрачено. Відновлюємо...', 'info');
 
                 if (state.livekitReconnectTimer) clearTimeout(state.livekitReconnectTimer);
-                state.livekitReconnectTimer = setTimeout(reconnectLiveKit, 2000);
+                state.livekitReconnectTimer = setTimeout(reconnectLiveKit, 10000);
             });
 
             // Подія зміни активних спікерів (для індикації хто говорить)
@@ -309,15 +320,40 @@ function handleActiveSpeakers(speakers) {
 }
 
 export async function publishLocalAudio() {
-    if (!state.livekitRoom || !state.localStream) return;
+    if (!state.livekitRoom) return;
+
+    let audioTrack = state.localStream ? state.localStream.getAudioTracks()[0] : null;
+
+    if (!audioTrack || audioTrack.readyState === 'ended') {
+        console.warn('[LiveKit] Аудіотрек завершено (ended). Переотримуємо доступ до мікрофона...');
+        try {
+            state.localStream = await navigator.mediaDevices.getUserMedia({
+                audio: { noiseSuppression: true, echoCancellation: true, autoGainControl: true },
+                video: false
+            });
+            audioTrack = state.localStream.getAudioTracks()[0];
+
+            if (state.audioContext && state.analyser) {
+                if (state.mediaSource) state.mediaSource.disconnect();
+                state.mediaSource = state.audioContext.createMediaStreamSource(state.localStream);
+                state.mediaSource.connect(state.analyser);
+            }
+        } catch (err) {
+            console.error('[Audio] Не вдалося відновити мікрофон після реконекту:', err);
+            state.isAudioReady = false; 
+            return;
+        }
+    }
+
     try {
-        const audioTrack = state.localStream.getAudioTracks()[0];
         if (audioTrack) {
             state.localAudioPublication = await state.livekitRoom.localParticipant.publishTrack(audioTrack, {
                 source: LivekitClient.Track.Source.Microphone,
                 name: 'mic-audio'
             });
-            console.log('[LiveKit] Local audio published');
+
+            console.log('[LiveKit] Local audio published successfully');
+
             if (state.isMuted) {
                 await state.localAudioPublication.track.mute();
             }
