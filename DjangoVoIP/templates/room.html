@@ -95,16 +95,21 @@
             <h3>🔗 Посилання приєднання</h3>
             <button class="modal-close" data-modal="invite-modal">&times;</button>
         </div>
-        <label for="expires-hours">Дійсне (годин):</label>
-        <input type="number" id="expires-hours" value="24" min="1">
-        <button id="generate-link-btn" class="btn-primary">Згенерувати</button>
-        <div id="invite-result" style="display:none; margin-top: 15px; padding: 12px; background: #36393f; border-radius: 6px;">
-            <p style="margin: 0 0 10px 0; color: #72767d; font-size: 12px;">Посилання:</p>
-            <p id="invite-link-text" style="margin: 0; color: #5865f2; word-break: break-all; font-size: 12px;"></p>
-            <button id="copy-invite-btn" class="btn-primary" style="margin-top: 10px;">Копіювати</button>
+
+        <label for="expires-hours" class="modal-label">Дійсне (годин):</label>
+        <input type="number" id="expires-hours" value="24" min="1" class="modal-input">
+
+        <div id="invite-result" style="display:none; margin-top: 15px; padding: 15px; background: #2f3136; border-radius: 8px; border: 1px solid #202225;">
+            <p style="margin: 0 0 8px 0; color: #b9bbbe; font-size: 12px; font-weight: 600; text-transform: uppercase;">Згенероване посилання:</p>
+            <div style="display: flex; gap: 10px; align-items: center; background: #202225; padding: 8px 12px; border-radius: 6px;">
+                <p id="invite-link-text" style="margin: 0; color: #5865f2; word-break: break-all; font-size: 13px; flex: 1; user-select: all;"></p>
+                <button id="copy-invite-btn" class="btn-primary" style="padding: 8px 16px; margin: 0; flex-shrink: 0;">Копіювати</button>
+            </div>
         </div>
-        <div class="modal-buttons" style="margin-top: 15px;">
+
+        <div class="modal-buttons" style="margin-top: 20px;">
             <button class="btn-secondary" data-modal="invite-modal">Скасувати</button>
+            <button id="generate-link-btn" class="btn-primary">Згенерувати</button>
         </div>
     </div>
 </div>

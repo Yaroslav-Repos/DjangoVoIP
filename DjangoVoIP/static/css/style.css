@@ -1009,11 +1009,40 @@ form select {
         color: #f2f2f2;
     }
 
-#password-modal input, #invite-modal input, #invite-modal label, #add-member-modal input, #add-member-modal label, #remove-member-modal label, #remove-member-modal select {
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+    .modal-header h3 {
+        margin-bottom: 0; /* Прибирає зайвий відступ знизу, якщо він є */
+        font-size: 18px;
+        color: #f2f2f2;
+    }
+
+/* Універсальні стилі для лейблів всередині модальних вікон */
+.modal-label,
+.modal-content label {
     display: block;
-    width: calc(100% - 30px);
-    padding: 10px 15px;
-    margin: 10px 15px;
+    margin-bottom: 8px;
+    color: #b9bbbe;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Універсальні стилі для інпутів всередині модальних вікон */
+.modal-input,
+.modal-content input[type="text"],
+.modal-content input[type="password"],
+.modal-content input[type="number"],
+.modal-content select {
+    width: 100%;
+    padding: 10px 12px;
+    margin-bottom: 15px;
     background: #40444b;
     color: #dbdbdb;
     border: 1px solid #36393f;
@@ -1021,26 +1050,15 @@ form select {
     font-size: 13px;
     font-family: inherit;
     box-sizing: border-box;
+    transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-    #password-modal input:focus, #invite-modal input:focus, #add-member-modal input:focus, #remove-member-modal select:focus {
+    .modal-content input:focus,
+    .modal-content select:focus {
         outline: none;
         border-color: #5865f2;
         box-shadow: 0 0 0 2px rgba(88, 101, 242, 0.2);
     }
-
-#password-modal label, #invite-modal label, #add-member-modal label, #remove-member-modal label {
-    padding: 10px 15px 5px 15px;
-    margin: 10px 0 5px 0;
-    color: #72767d;
-    font-size: 12px;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    display: block;
-    width: calc(100% - 30px);
-    box-sizing: border-box;
-}
 
 #remove-member-modal select {
     padding: 8px 12px;
