@@ -10,6 +10,14 @@ import {
 function processPublishedTrack(publication, participant) {
     console.log(`[DEBUG LiveKit] Processing Track: kind=${publication.kind}, source=${publication.source}, participant=${participant.identity}`);
 
+    if (publication.source === LivekitClient.Track.Source.Camera) {
+
+        if (state.isCameraGalleryOpen) {
+            recalculateVisibleCameras();
+        }
+        return;
+    }
+
     if (publication.source === LivekitClient.Track.Source.Unknown ||
         publication.source === LivekitClient.Track.Source.ScreenShareAudio) {
 
@@ -21,10 +29,15 @@ function processPublishedTrack(publication, participant) {
         if (publication.kind === LivekitClient.Track.Kind.Video) {
             addRemoteScreenShare(publication, participant.identity);
         }
-    } else {
+        return;
+    } 
+
+    if (publication.source === LivekitClient.Track.Source.Microphone) {
         // На звичайні мікрофони підписуємось автоматично завжди
         publication.setSubscribed(true);
+        return;
     }
+
 }
 
 export async function connectLiveKit() {
@@ -79,6 +92,13 @@ export async function connectLiveKit() {
             // Подія зміни активних спікерів (для індикації хто говорить)
             state.livekitRoom.on(LivekitClient.RoomEvent.ActiveSpeakersChanged, (speakers) => {
                 handleActiveSpeakers(speakers);
+
+                state.activeSpeakers = speakers.map(s => s.identity);
+
+                updateSpeakerHighlights();
+
+                recalculateVisibleCameras();
+
             });
 
             // Подія виявлення публікації треку 
@@ -102,10 +122,12 @@ export async function connectLiveKit() {
                                 console.log(`[DEBUG ScreenAudio] Attached ScreenShareAudio on the fly.`);
                             }
                         }
-                    } else {
+                    }
+                    else if (publication.source === LivekitClient.Track.Source.Microphone) {
                         attachRemoteTrack(track, participant.identity);
                     }
                 }
+
                 else if (track.kind === LivekitClient.Track.Kind.Video && publication.source === LivekitClient.Track.Source.Unknown) {
                     state.remoteScreenTracks[participant.identity] = track;
 
@@ -118,6 +140,16 @@ export async function connectLiveKit() {
                         }
                     }
                 }
+
+                ///CAMERAS
+                else if (track.kind === LivekitClient.Track.Kind.Video && publication.source === LivekitClient.Track.Source.Camera) {
+                    console.log(`[CAMERA] Успішно підписалися на камеру користувача: ${participant.identity}`);
+
+                    if (state.isCameraGalleryOpen) {
+                        recalculateVisibleCameras(); 
+                    }
+                }
+
             });
 
             // Обробка повного закриття трансляції стрімером 
@@ -129,6 +161,14 @@ export async function connectLiveKit() {
 
                     removeRemoteScreenShare(participant.identity);
                 }
+
+                ///CAMERAS
+                if (publication.source === LivekitClient.Track.Source.Camera) {
+                    if (state.isCameraGalleryOpen) {
+                        recalculateVisibleCameras();
+                    }
+                }
+
             });
 
             // Відписка від треків 

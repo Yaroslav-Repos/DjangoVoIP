@@ -2,9 +2,128 @@ import { state } from './state.js';
 
 const MAX_CAMERAS = 9;
 
+export async function startCameraWithPreview() {
+
+    if (state.localCameraPublication) {
+        stopLocalCamera();
+        return;
+    }
+
+    try {
+        console.log('[Camera] Запит доступу до камери...');
+
+        state.localCameraStream = await navigator.mediaDevices.getUserMedia({
+            video: {
+                width: { ideal: 1280 },
+                height: { ideal: 720 },
+                frameRate: { ideal: 30 }
+            }
+        });
+
+
+        const modal = document.getElementById('camera-preview-modal');
+        const videoElem = document.getElementById('preview-video-element');
+
+        if (modal && videoElem) {
+            videoElem.srcObject = state.localCameraStream;
+            modal.classList.add('active');
+        }
+    } catch (error) {
+        console.error('[Camera] Помилка доступу:', error);
+        alert('Не вдалося отримати доступ до камери. Перевірте дозволи браузера.');
+    }
+}
+
+export async function publishLocalCamera() {
+    if (!state.localCameraStream || !state.livekitRoom) return;
+
+    const videoTrack = state.localCameraStream.getVideoTracks()[0];
+
+    try {
+        document.getElementById('confirm-camera-btn').innerText = 'Підключення...';
+        document.getElementById('confirm-camera-btn').disabled = true;
+
+        // Публікуємо трек
+        state.localCameraPublication = await state.livekitRoom.localParticipant.publishTrack(videoTrack, {
+            name: 'camera',
+            source: LivekitClient.Track.Source.Camera,
+            simulcast: true // Важливо для динамічної сітки!
+        });
+
+        console.log('[Camera] Трансляція успішно розпочата');
+
+        closeCameraPreviewModal();
+
+        const btn = document.getElementById('toggle-my-camera-btn');
+        if (btn) {
+            btn.innerText = "🛑 Вимкнути камеру";
+            btn.style.background = "#f04747";
+        }
+
+        // Якщо Галерея зараз відкрита — перераховуємо сітку, щоб відобразити себе
+        if (state.isCameraGalleryOpen) {
+            recalculateVisibleCameras();
+        }
+
+    } catch (error) {
+        console.error('[Camera] Помилка публікації:', error);
+        alert('Помилка трансляції. Спробуйте ще раз.');
+    } finally {
+        document.getElementById('confirm-camera-btn').innerText = 'Почати трансляцію';
+        document.getElementById('confirm-camera-btn').disabled = false;
+    }
+}
+
+export async function stopLocalCamera() {
+    if (!state.livekitRoom) return;
+
+    if (state.localCameraPublication) {
+        await state.livekitRoom.localParticipant.unpublishTrack(state.localCameraPublication.track);
+        state.localCameraPublication = null;
+    }
+
+    if (state.localCameraStream) {
+        state.localCameraStream.getTracks().forEach(t => t.stop()); // Вимикаємо індикатор камери в браузері
+        state.localCameraStream = null;
+    }
+
+    // ОновлюємоUI
+    const btn = document.getElementById('toggle-my-camera-btn');
+    if (btn) {
+        btn.innerText = "📷 Увімкнути мою камеру";
+        btn.style.background = "#5865f2";
+    }
+
+    if (state.isCameraGalleryOpen) {
+        recalculateVisibleCameras(); // Прибираємо себе з сітки
+    }
+    console.log('[Camera] Трансляція зупинена');
+}
+
+
+export function closeCameraPreviewModal() {
+    // Якщо потік був запрошений, але ще не опублікований — гасимо камеру
+    if (state.localCameraStream && !state.localCameraPublication) {
+        state.localCameraStream.getTracks().forEach(t => t.stop());
+        state.localCameraStream = null;
+    }
+
+    const videoElem = document.getElementById('preview-video-element');
+    if (videoElem) videoElem.srcObject = null;
+
+    const modal = document.getElementById('camera-preview-modal');
+    if (modal) modal.classList.remove('active');
+}
+
 export function openCameraGallery() {
     if (state.isCameraGalleryOpen) return;
     state.isCameraGalleryOpen = true;
+
+    const btn = document.getElementById('camera-gallery-btn');
+    if (btn) {
+        btn.innerText = "❌ Закрити камери";
+        btn.style.background = "#f04747"; // Червоний колір
+    }
 
     // Створюємо контейнер вікна 
     const container = document.createElement('div');
@@ -29,14 +148,29 @@ export function closeCameraGallery() {
     if (!state.isCameraGalleryOpen) return;
     state.isCameraGalleryOpen = false;
 
-    // Відписка від усіх камер
+    const btn = document.getElementById('camera-gallery-btn');
+    if (btn) {
+        btn.innerText = "📹 Веб-камери";
+        btn.style.background = "#23a55a"; // Зелений колір
+    }
+
     if (state.livekitRoom) {
         state.livekitRoom.remoteParticipants.forEach(participant => {
-            participant.tracks.forEach(pub => {
-                if (pub.source === 'camera' && pub.isSubscribed) {
-                    pub.setSubscribed(false);
-                }
-            });
+
+            if (participant.trackPublications) {
+                participant.trackPublications.forEach(pub => {
+                    if (pub.source === 'camera' && pub.isSubscribed) {
+                        pub.setSubscribed(false);
+                    }
+                });
+            }
+        });
+    }
+
+    const container = document.getElementById('camera-grid-container');
+    if (container) {
+        container.querySelectorAll('video').forEach(video => {
+            video.srcObject = null;
         });
     }
 
@@ -138,7 +272,7 @@ function renderGridElements(visibleParticipants) {
             card.dataset.identity = p.identity;
             card.innerHTML = `
                 <div class="camera-video-wrapper"></div>
-                <div class="camera-user-name">${p.isLocal ? 'Ви' : p.participant.identity}</div>
+                <div class="camera-user-name">${p.isLocal ? 'Ви' : p.participant.name}</div>
             `;
         }
 

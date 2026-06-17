@@ -5,6 +5,11 @@ import { loadMoreMessages } from './chat.js';
 
 import {showLocalToast} from './utils.js';
 
+import {
+    openCameraGallery, closeCameraGallery,
+    startCameraWithPreview, publishLocalCamera, stopLocalCamera, closeCameraPreviewModal
+} from './cameras.js';
+
 let audioLevelTextEl = null;
 let audioLevelIndicatorEl = null;
 let lastPercentage = -1; // Зберігаємо останнє значення
@@ -98,6 +103,47 @@ export function initializeEventListeners() {
 
     if (isInitialized) return;
     isInitialized = true;
+
+
+    const cameraGalleryBtn = document.getElementById('camera-gallery-btn');
+    if (cameraGalleryBtn) {
+        cameraGalleryBtn.addEventListener('click', () => {
+            if (!state.livekitRoom || state.livekitRoom.state !== 'connected') {
+                return alert('Зачекайте підключення до кімнати!');
+            }
+            if (state.isCameraGalleryOpen) closeCameraGallery();
+            else openCameraGallery();
+        });
+    }
+
+    
+    const toggleMyCameraBtn = document.getElementById('toggle-my-camera-btn');
+    if (toggleMyCameraBtn) {
+        toggleMyCameraBtn.addEventListener('click', () => {
+            if (!state.livekitRoom || state.livekitRoom.state !== 'connected') {
+                return alert('Зачекайте підключення до кімнати!');
+            }
+
+            if (state.localCameraPublication) {
+                stopLocalCamera();
+            } else {
+                startCameraWithPreview();
+            }
+        });
+    }
+
+    // 3. Кнопки всередині модалки прев'ю
+    const confirmCameraBtn = document.getElementById('confirm-camera-btn');
+    if (confirmCameraBtn) {
+        confirmCameraBtn.addEventListener('click', publishLocalCamera);
+    }
+
+    const cancelCameraBtn = document.getElementById('cancel-camera-btn');
+    const closeCameraCross = document.getElementById('close-camera-modal-cross');
+
+    if (cancelCameraBtn) cancelCameraBtn.addEventListener('click', closeCameraPreviewModal);
+    if (closeCameraCross) closeCameraCross.addEventListener('click', closeCameraPreviewModal);
+
 
     const muteBtn = document.getElementById('mute-btn');
     if (muteBtn) {

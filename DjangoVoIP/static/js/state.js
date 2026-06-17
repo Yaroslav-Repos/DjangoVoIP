@@ -40,4 +40,6 @@ export const state = {
     isCameraGalleryOpen: false,
     cameraGalleryWindow: null,
     activeSpeakers: [],
+    localCameraStream: null,
+    localCameraPublication: null,
 };
