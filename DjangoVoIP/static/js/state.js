@@ -36,6 +36,7 @@ export const state = {
     isReconnectingLiveKit: false,
     livekitReconnectTimer: null,
     isConnecting: false,
+    isIntentionalDisconnect: false,
 
     isCameraGalleryOpen: false,
     cameraGalleryWindow: null,

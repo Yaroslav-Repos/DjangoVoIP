@@ -40,7 +40,7 @@ function processPublishedTrack(publication, participant) {
 
 }
 
-export async function connectLiveKit() {
+export async function connectLiveKit(isFromReconnect = false) {
 
     if (state.livekitReconnectTimer) {
         clearTimeout(state.livekitReconnectTimer);
@@ -48,7 +48,7 @@ export async function connectLiveKit() {
     }
 
     if (state.isConnecting ||
-        state.isReconnectingLiveKit ||
+        (!isFromReconnect && state.isReconnectingLiveKit) ||
         (state.livekitRoom && ['connected', 'connecting', 'reconnecting'].includes(state.livekitRoom.state))) {
         console.log('[LiveKit] Connection already in progress or established. Skipping.');
         return;
@@ -83,6 +83,9 @@ export async function connectLiveKit() {
 
             state.livekitRoom.on(LivekitClient.RoomEvent.Disconnected, () => {
                 console.warn('[LiveKit] Disconnected from media server.');
+
+                if (state.isIntentionalDisconnect || state.isReconnectingLiveKit) return;
+
                 showLocalToast('Медіа-зв\'язок втрачено. Відновлюємо...', 'info');
 
                 if (state.livekitReconnectTimer) clearTimeout(state.livekitReconnectTimer);
@@ -222,16 +225,28 @@ export async function connectLiveKit() {
     } catch (error) {
         console.error('[LiveKit] Initial connection error:', error);
 
+        if (state.livekitRoom) {
+            try {
+                state.livekitRoom.removeAllListeners();
+                state.livekitRoom.disconnect();
+            } catch (e) {
+                console.warn('[LiveKit] Error disconnecting failed room instance:', e);
+            }
+            state.livekitRoom = null;
+        }
+
         showLocalToast('Не вдалося встановити медіа-з\'єднання. Спроба підключення...', 'error');
         updateMyConnectionStatus(connectionStates.ERROR, 'Помилка медіа (черга реконекту)');
 
         if (state.livekitReconnectTimer) clearTimeout(state.livekitReconnectTimer);
-        state.livekitReconnectTimer = setTimeout(connectLiveKit, 7000);
+
+        if (!isFromReconnect) {
+            state.livekitReconnectTimer = setTimeout(reconnectLiveKit, 10000);
+        }
 
         throw error;
-    }
-    finally {
-        state.isConnecting = false; 
+    } finally {
+        state.isConnecting = false;
     }
 
 }
@@ -251,13 +266,18 @@ export async function reconnectLiveKit() {
     console.log('[LiveKit] Reconnect triggered, cleaning up...');
 
     if (state.livekitRoom) {
-        await state.livekitRoom.disconnect();
+        state.livekitRoom.removeAllListeners();
+        try {
+            await state.livekitRoom.disconnect();
+        } catch (e) {
+            console.warn('[LiveKit] Error during explicit disconnect:', e);
+        }
         state.livekitRoom = null;
     }
 
     try {
 
-        await connectLiveKit();
+        await connectLiveKit(true);
 
         updateMyConnectionStatus(connectionStates.CONNECTED, 'Відновлено ✅');
         clearMyConnectionStatus();
@@ -265,7 +285,7 @@ export async function reconnectLiveKit() {
         console.error('[LiveKit] Reconnect failed:', error);
 
         if (state.livekitReconnectTimer) clearTimeout(state.livekitReconnectTimer);
-        state.livekitReconnectTimer = setTimeout(reconnectLiveKit, 5000);
+        state.livekitReconnectTimer = setTimeout(reconnectLiveKit, 10000);
     } finally {
         state.isReconnectingLiveKit = false;
     }
