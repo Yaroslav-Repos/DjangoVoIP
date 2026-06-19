@@ -6,6 +6,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DjangoVoIP - Voice Chat</title>
+
+    <link rel="manifest" href="{% static 'manifest.json' %}">
+    <meta name="theme-color" content="#36393f">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
     {% block extra_css %}{% endblock %}
 
@@ -48,7 +54,7 @@
             }
 
                 .gt_switcher_wrapper .gt_selected:hover {
-                    border-color: #5865f2 !important; 
+                    border-color: #5865f2 !important;
                 }
 
                 .gt_switcher_wrapper .gt_selected a span,
@@ -122,6 +128,9 @@
                 {% else %}
                 <div>🔓 Не авторизовані</div>
                 {% endif %}
+
+                <a href="{% url 'about' %}" style="color: #b9bbbe; text-decoration: none; font-size: 14px;">ℹ️ Про проект</a>
+
                 {% block header_menu %}{% endblock %}
             </div>
 
@@ -193,7 +202,7 @@
 
                     Array.from(link.childNodes).forEach(node => {
                         if (node.nodeType === Node.TEXT_NODE) {
-                            node.textContent = ''; 
+                            node.textContent = '';
                         }
                     });
 
@@ -218,6 +227,20 @@
         gtObserver.observe(document.documentElement, { childList: true, subtree: true });
     </script>
     <script src="https://cdn.gtranslate.net/widgets/latest/dwf.js"></script>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then((reg) => {
+                        console.log('Service Worker успішно зареєстровано. Сфера дії:', reg.scope);
+                    })
+                    .catch((err) => {
+                        console.error('Помилка реєстрації Service Worker:', err);
+                    });
+            });
+        }
+    </script>
 
 </body>
 </html>

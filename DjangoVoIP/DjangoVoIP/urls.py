@@ -7,10 +7,13 @@ from django.urls import path, include, re_path
 from rest_framework.routers import DefaultRouter
 from rooms.views import (
     RoomViewSet, RegisterView, LoginView, LogoutView, 
-    MenuView, RoomDetailView, TurnCredentialsView, LiveKitTokenView
+    MenuView, RoomDetailView, TurnCredentialsView, LiveKitTokenView,
+    AboutView
 )
 
 from django.views.generic import RedirectView
+
+from django.views.generic import TemplateView
 
 router = DefaultRouter()
 router.register(r'rooms', RoomViewSet, basename='room')
@@ -26,6 +29,13 @@ urlpatterns = [
     path('login/', LoginView.as_view(), name='login'),
     path('logout/', LogoutView.as_view(), name='logout'),
     path('room/<uuid:room_id>/', RoomDetailView.as_view(), name='room_detail'),
+
+    path('about/', AboutView.as_view(), name='about'),
+
+    path('service-worker.js', TemplateView.as_view(
+        template_name="service-worker.js",
+        content_type='application/javascript'
+    ), name='service-worker'),
 
     path('api/', include(router.urls)),
    

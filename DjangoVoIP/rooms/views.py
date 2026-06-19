@@ -28,6 +28,9 @@ from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from .utils import kick_from_livekit, delete_livekit_room
 
+from django.views.generic import TemplateView
+
+
 class RegisterView(View):
     def get(self, request):
         return render(request, 'register.html', {'form': UserCreationForm()})
@@ -775,6 +778,11 @@ class LiveKitTokenView(APIView):
                 {"detail": "Внутрішня помилка сервера при ініціалізації медіа-сесії."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+
+class AboutView(TemplateView):
+    template_name = 'about.html'
+
 
 
 class TurnCredentialsView(APIView):
