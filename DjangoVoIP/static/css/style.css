@@ -1364,3 +1364,35 @@ form select {
     font-size: 12px;
     pointer-events: none;
 }
+
+/* ==========================================================================
+   9. FOOTER STYLES
+   ========================================================================== */
+footer {
+    background: #2f3136; /* Такий самий фон, як у шапки */
+    padding: 12px 20px; /* Ті самі внутрішні відступи */
+    border-radius: 12px; /* Заокруглення як у всього проекту */
+    margin-top: 20px; /* Відступ від контенту (в шапці margin-bottom) */
+    display: flex;
+    justify-content: center; /* Центруємо посилання (або space-between, якщо елементів буде декілька) */
+    align-items: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3); /* Тінь як у шапки */
+    position: relative;
+    min-height: 48px; /* Однаковий візуальний об'єм */
+}
+
+    footer a {
+        color: #5865f2; /* Фірмовий колір посилань проекту */
+        text-decoration: none;
+        font-weight: 500;
+        padding: 6px 12px; /* Клікабельна зона навколо тексту */
+        border-radius: 6px;
+        transition: background 0.2s; /* Плавний ефект наведення */
+        display: inline-flex;
+        align-items: center;
+    }
+
+        footer a:hover {
+            background: rgba(88, 101, 242, 0.2); /* Фіолетове підсвічування, як у меню */
+            text-decoration: none;
+        }

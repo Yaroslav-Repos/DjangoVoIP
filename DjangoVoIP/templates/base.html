@@ -114,6 +114,7 @@
         #google_translate_element2 {
             display: none !important;
         }
+
     </style>
 
 </head>
@@ -124,12 +125,14 @@
             <div class="header-left">
 
                 {% if request.user.is_authenticated %}
-                <div>👤 <strong>{{ request.user.username }}</strong></div>
+                <a href="{% url 'menu' %}" style="color: inherit; text-decoration: none; display: flex; align-items: center;">
+                    👤 <strong>{{ request.user.username }}</strong>
+                </a>
                 {% else %}
-                <div>🔓 Не авторизовані</div>
+                <a href="{% url 'menu' %}" style="color: inherit; text-decoration: none; display: flex; align-items: center;">
+                    <div>🔓 Не авторизовані</div>
+                </a>
                 {% endif %}
-
-                <a href="{% url 'about' %}" style="color: #b9bbbe; text-decoration: none; font-size: 14px;">ℹ️ Про проект</a>
 
                 {% block header_menu %}{% endblock %}
             </div>
@@ -148,6 +151,11 @@
 
         </header>
         {% block content %}{% endblock %}
+
+        <footer>
+            <a href="{% url 'about' %}">ℹ️ Про проект</a>
+        </footer>
+
     </div>
 
     <script>
