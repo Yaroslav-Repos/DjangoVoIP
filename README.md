@@ -4,6 +4,16 @@ A real-time video conferencing application built with Django, Django REST Framew
 
 > 💡 **Inspired by Discord** - This project combines Discord's intuitive room-based communication model with robust video conferencing capabilities, creating a self-hosted alternative for team collaboration and real-time communication.
 
+## 🌐 Live Demo
+
+The application is currently hosted using **Cloudflare Tunnel** at:
+
+```
+https://yaroslavtestapp.pp.ua/
+```
+
+⚠️ **Status**: Currently disabled, but can be enabled for testing upon request.
+
 ## 🌟 Features
 
 - **Video Conferencing**: Real-time video calls powered by [LiveKit](https://livekit.io/) SFU (Selective Forwarding Unit)
