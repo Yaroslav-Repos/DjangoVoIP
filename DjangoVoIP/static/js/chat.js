@@ -4,14 +4,14 @@ import { formatDate } from './utils.js';
 
 export async function loadChatHistory() {
     try {
-        const res = await fetch(`/api/rooms/${window.roomId}/messages/?page=1&page_size=50`);
+        const res = await fetch(`/api/rooms/${window.roomId}/messages/?page=1`);
         const data = await res.json();
         const chatBox = document.getElementById('chat-box');
 
         const messages = data.results ? data.results : (Array.isArray(data) ? data : []);
 
         state.chatMessagesPage = 1;
-        state.chatMessagesHasMore = data.next || false;
+        state.chatMessagesHasMore = data.next !== null && data.next !== undefined;
         state.isLoadingMessages = false;
 
         if (messages.length > 0) {
@@ -37,7 +37,7 @@ export async function loadChatHistory() {
 export async function loadMoreMessages() {
     try {
         state.chatMessagesPage++;
-        const res = await fetch(`/api/rooms/${window.roomId}/messages/?page=${state.chatMessagesPage}&page_size=50`);
+        const res = await fetch(`/api/rooms/${window.roomId}/messages/?page=${state.chatMessagesPage}`);
         const data = await res.json();
         const chatBox = document.getElementById('chat-box');
         const messages = data.results ? data.results : [];
@@ -63,7 +63,7 @@ export async function loadMoreMessages() {
             chatBox.scrollTop = scrollHeightAfter - scrollHeightBefore;
         }
 
-        state.chatMessagesHasMore = data.next || false;
+        state.chatMessagesHasMore = data.next !== null && data.next !== undefined;
         state.isLoadingMessages = false;
     } catch (e) {
         console.error("Помилка завантаження старих повідомлень", e);

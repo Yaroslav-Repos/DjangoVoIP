@@ -107,7 +107,7 @@ export function initAdminListeners() {
         selectEl.innerHTML = '<option value="">-- Завантаження --</option>';
 
         try {
-            const response = await fetch(`/api/rooms/${window.roomId}/members/?page=1&page_size=100`);
+            const response = await fetch(`/api/rooms/${window.roomId}/members/?page=1`);
             if (response.ok) {
                 const data = await response.json();
                 const members = data.results || [];

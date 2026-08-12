@@ -4,7 +4,6 @@ from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.forms import AuthenticationForm
-from django.core.paginator import Paginator
 from django.utils import timezone
 from datetime import timedelta
 
@@ -13,6 +12,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
+from rest_framework.filters import SearchFilter
 
 from .models import Room, RoomMembership, ChatMessage, RoomInviteLink
 from .serializers import RoomSerializer, ChatMessageSerializer
@@ -68,19 +68,7 @@ class MenuView(View):
         if not request.user.is_authenticated:
             return redirect('login')
 
-        from django.db.models import Q
-
-        # Фільтруємо кімнати - показуємо тільки доступні користувачеві
-        # - Публічні кімнати (всім)
-        # - Приватні кімнати (тільки для членів)
-        rooms_queryset = Room.objects.filter(
-            Q(is_private=False) | Q(is_private=True, memberships__user=request.user)
-        ).distinct().order_by('-created_at')
-
-        paginator = Paginator(rooms_queryset, 10)
-        page_number = request.GET.get('page')
-        page_obj = paginator.get_page(page_number)
-        return render(request, 'menu.html', {'page_obj': page_obj})
+        return render(request, 'menu.html')
 
 class RoomDetailView(View):
     def get(self, request, room_id):
@@ -112,10 +100,13 @@ class RoomDetailView(View):
         return render(request, 'room.html', {'room': room})
 
 # --- DRF API VIEWS ---
+# !!! --- NEED TO REFACTOR: split into separate domens --- !!!
 
 class RoomViewSet(viewsets.ModelViewSet):
     serializer_class = RoomSerializer
     permission_classes = [IsAuthenticated]
+    filter_backends = [SearchFilter]
+    search_fields = ['name']
 
     def get_queryset(self):
         user = self.request.user
@@ -155,41 +146,6 @@ class RoomViewSet(viewsets.ModelViewSet):
             queryset = Room.objects.all().order_by('-created_at').prefetch_related('created_by')
 
         return queryset
-
-    def list(self, request, *args, **kwargs):
-        """ПАГІНАЦІЯ + ПОШУК"""
-        queryset = self.filter_queryset(self.get_queryset())
-
-        # Пошук за назвою кімнати (регістронезалежний)
-        search_query = request.query_params.get('search', '').strip()
-        if search_query:
-            queryset = queryset.filter(name__icontains=search_query)
-
-        # Отримати розмір сторінки з query параметра (за замовчуванням 10)
-        page_size = request.query_params.get('page_size', 10)
-        try:
-            page_size = int(page_size)
-            if page_size < 1 or page_size > 100:
-                page_size = 10
-        except (ValueError, TypeError):
-            page_size = 10
-
-        paginator = Paginator(queryset, page_size)
-        page_number = request.query_params.get('page', 1)
-
-        try:
-            page_obj = paginator.page(page_number)
-        except:
-            page_obj = paginator.page(1)
-
-        serializer = self.get_serializer(page_obj, many=True)
-        return Response({
-            'count': paginator.count,
-            'next': paginator.num_pages > int(page_number) if page_number else False,
-            'previous': int(page_number) > 1 if page_number else False,
-            'num_pages': paginator.num_pages,
-            'results': serializer.data
-        })
 
     def get_permissions(self):
         if self.action in ['list', 'create', 'join_private', 'join_with_link']:
@@ -628,63 +584,43 @@ class RoomViewSet(viewsets.ModelViewSet):
         #  Отримати всіх членів кімнати з пагінацією
         members_queryset = room.memberships.select_related('user').order_by('-joined_at')
 
-        #  ПАГІНАЦІЯ: 20 членів на сторінку
-        page_size = request.query_params.get('page_size', 20)
-        try:
-            page_size = int(page_size)
-            if page_size < 1 or page_size > 100:
-                page_size = 20
-        except (ValueError, TypeError):
-            page_size = 20
+        page = self.paginate_queryset(members_queryset)
+        if page is not None:
+            members_data = [
+                {
+                    'username': membership.user.username,
+                    'role': membership.role,
+                    'joined_at': membership.joined_at.isoformat()
+                }
+                for membership in page
+            ]
+            return self.get_paginated_response(members_data)
 
-        paginator = Paginator(members_queryset, page_size)
-        page_number = request.query_params.get('page', 1)
-
-        try:
-            page_obj = paginator.page(page_number)
-        except:
-            page_obj = paginator.page(1)
-
-       
         members_data = [
             {
                 'username': membership.user.username,
                 'role': membership.role,
                 'joined_at': membership.joined_at.isoformat()
             }
-            for membership in page_obj
+            for membership in members_queryset
         ]
-
-        return Response({
-            'count': paginator.count,
-            'next': paginator.num_pages > int(page_number) if page_number else False,
-            'previous': int(page_number) > 1 if page_number else False,
-            'num_pages': paginator.num_pages,
-            'results': members_data
-        })
+        return Response(members_data)
 
     @action(detail=True, methods=['get'], url_path='messages')
     def messages(self, request, pk=None):
         room = self.get_object()
-  
+
         messages_queryset = ChatMessage.objects.filter(
             room=room
         ).select_related('user').order_by('-created_at')
 
+        page = self.paginate_queryset(messages_queryset)
+        if page is not None:
+            serializer = ChatMessageSerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
 
-        paginator = Paginator(messages_queryset, 50)
-        page_number = request.query_params.get('page', 1)
-        try:
-            page_obj = paginator.page(page_number)
-        except:
-            page_obj = paginator.page(1)
-
-        serializer = ChatMessageSerializer(page_obj, many=True)
-        return Response({
-            'count': paginator.count,
-            'next': paginator.num_pages > int(page_number),
-            'results': serializer.data
-        })
+        serializer = ChatMessageSerializer(messages_queryset, many=True)
+        return Response(serializer.data)
 
 
 class LiveKitTokenThrottle(UserRateThrottle):

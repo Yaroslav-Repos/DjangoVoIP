@@ -158,7 +158,7 @@
 
         async function loadRooms(page = 1, type = 'all') {
             try {
-                let url = `/api/rooms/?page=${page}&page_size=10`;
+                let url = `/api/rooms/?page=${page}`;
 
                 const searchQuery = document.getElementById('search-input')?.value.trim();
                 if (searchQuery) {
@@ -176,10 +176,9 @@
                 const data = await response.json();
                 const rooms = data.results || [];
                 const pageInfo = {
-                    hasMore: data.next || false,
+                    hasMore: data.next !== null && data.next !== undefined,
                     nextPage: page + 1,
-                    count: data.count || 0,
-                    numPages: data.num_pages || 1
+                    count: data.count || 0
                 };
 
                 const publicRoomsDiv = document.getElementById('public-rooms');
