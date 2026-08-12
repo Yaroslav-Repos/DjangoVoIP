@@ -377,6 +377,7 @@ python seed.py
 - ✅ Real-time chat system
 - ✅ Room management
 - ✅ User authentication
+- 🚧 The project requires decomposition into distinct domains due to its broad feature set
 - 🚧 Additional features in development
 
 ---
